@@ -1,0 +1,11 @@
+上传步骤：
+1. 解压本压缩包。
+2. 打开 GitHub 仓库 ylc29987/liangchen-flow-center。
+3. 点击 Add file → Upload files。
+4. 把解压后文件夹里面的全部内容拖入上传区，不要只上传 zip。
+5. 必须确认根目录出现 package.json、next.config.mjs、tsconfig.json、next-env.d.ts，以及 app 文件夹。
+6. 点击 Commit changes。
+7. Vercel 会自动重新部署；若没有，进入项目 Deployments 点击 Redeploy。
+8. 成功后点击 Visit 即可打开网站。
+
+注意：不要删除现有 Vercel 项目，不需要重新 Import。
