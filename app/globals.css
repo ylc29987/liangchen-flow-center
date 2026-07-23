@@ -1227,3 +1227,315 @@ td small{
     opacity:1;
   }
 }
+
+
+/* V4.7：投放批次按天汇总与承接微信看板 */
+.daily-batch-list{
+  display:grid;
+  gap:16px;
+  margin-top:18px;
+}
+
+.daily-batch-group{
+  border:1px solid var(--line);
+  border-radius:16px;
+  overflow:hidden;
+  background:#fff;
+  box-shadow:0 8px 24px rgba(42,58,82,.05);
+}
+
+.daily-batch-group[open]{
+  border-color:#cfd5ff;
+  box-shadow:0 12px 30px rgba(70,79,167,.09);
+}
+
+.daily-batch-summary{
+  list-style:none;
+  display:grid;
+  grid-template-columns:minmax(170px,.7fr) minmax(560px,2fr) auto;
+  gap:20px;
+  align-items:center;
+  padding:18px 20px;
+  cursor:pointer;
+  background:linear-gradient(90deg,#fbfcff,#f7f8ff);
+  transition:.18s ease;
+}
+
+.daily-batch-summary::-webkit-details-marker{display:none}
+
+.daily-batch-summary:hover{
+  background:linear-gradient(90deg,#f8f9ff,#f1f3ff);
+}
+
+.daily-batch-date{
+  display:grid;
+  gap:4px;
+}
+
+.daily-batch-date strong{
+  font-size:1.12rem;
+  color:#1f2b42;
+}
+
+.daily-batch-date span{
+  color:var(--muted);
+  font-size:.76rem;
+}
+
+.daily-batch-kpis{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+}
+
+.daily-batch-kpis>div{
+  padding:10px 12px;
+  border:1px solid #e6ebf2;
+  border-radius:11px;
+  background:#fff;
+}
+
+.daily-batch-kpis span{
+  display:block;
+  color:var(--muted);
+  font-size:.72rem;
+}
+
+.daily-batch-kpis strong{
+  display:block;
+  margin-top:3px;
+  color:#27354c;
+  font-size:.98rem;
+}
+
+.daily-batch-toggle{
+  color:#5360d8;
+  font-size:.76rem;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+.daily-batch-group[open] .daily-batch-toggle::before{
+  content:"收起";
+  font-size:0;
+}
+
+.daily-batch-group[open] .daily-batch-toggle{
+  color:#79869a;
+}
+
+.daily-batch-content{
+  padding:20px;
+  border-top:1px solid var(--line);
+  background:#fff;
+}
+
+.account-flow-head,
+.daily-detail-title{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:16px;
+  margin-bottom:13px;
+}
+
+.account-flow-head h4,
+.daily-detail-title h4{
+  margin:0;
+  color:#243149;
+  font-size:1rem;
+}
+
+.account-flow-head p,
+.daily-detail-title p{
+  margin:4px 0 0;
+  color:var(--muted);
+  font-size:.74rem;
+}
+
+.account-flow-head>span{
+  padding:7px 11px;
+  border-radius:999px;
+  background:var(--primary-soft);
+  color:#404ac6;
+  font-size:.76rem;
+  font-weight:800;
+}
+
+.account-flow-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:12px;
+  margin-bottom:24px;
+}
+
+.account-flow-card{
+  border:1px solid #e3e9f1;
+  border-radius:15px;
+  background:linear-gradient(180deg,#fff,#fafbfe);
+  padding:15px;
+  min-width:0;
+  transition:.18s ease;
+}
+
+.account-flow-card:hover{
+  transform:translateY(-2px);
+  border-color:#cfd5ff;
+  box-shadow:0 10px 24px rgba(67,79,134,.09);
+}
+
+.account-flow-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.account-flow-title>div{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+
+.account-flow-title strong{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#25324a;
+}
+
+.account-flow-title small{
+  color:var(--muted);
+  white-space:nowrap;
+}
+
+.account-rank{
+  width:25px;
+  height:25px;
+  display:inline-grid;
+  place-items:center;
+  border-radius:8px;
+  background:#eef1f6;
+  color:#66758a;
+  font-size:.7rem;
+  font-weight:900;
+  flex:0 0 auto;
+}
+
+.account-rank.rank-1{
+  background:#fff0bd;
+  color:#946300;
+}
+
+.account-rank.rank-2{
+  background:#e8edf5;
+  color:#546277;
+}
+
+.account-rank.rank-3{
+  background:#f4dfd0;
+  color:#985936;
+}
+
+.account-flow-number{
+  display:flex;
+  align-items:baseline;
+  gap:5px;
+  margin-top:13px;
+}
+
+.account-flow-number strong{
+  color:#111d33;
+  font-size:1.7rem;
+  line-height:1;
+}
+
+.account-flow-number span{
+  color:var(--muted);
+  font-size:.76rem;
+}
+
+.account-flow-meter{
+  height:7px;
+  border-radius:999px;
+  background:#edf1f5;
+  overflow:hidden;
+  margin:12px 0;
+}
+
+.account-flow-meter i{
+  display:block;
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg,#5d67e9,#36bf92);
+}
+
+.account-flow-stats{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:8px;
+}
+
+.account-flow-stats>div{
+  padding:8px 9px;
+  border-radius:9px;
+  background:#f6f8fb;
+}
+
+.account-flow-stats span{
+  display:block;
+  color:var(--muted);
+  font-size:.68rem;
+}
+
+.account-flow-stats strong{
+  display:block;
+  margin-top:2px;
+  color:#344158;
+  font-size:.82rem;
+}
+
+.account-flow-channel{
+  margin-top:10px;
+  color:#66758a;
+  font-size:.7rem;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.daily-detail-title{
+  padding-top:4px;
+}
+
+@media(max-width:1250px){
+  .daily-batch-summary{
+    grid-template-columns:1fr;
+    gap:12px;
+  }
+
+  .daily-batch-toggle{
+    justify-self:start;
+  }
+}
+
+@media(max-width:760px){
+  .daily-batch-kpis{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .daily-batch-content{
+    padding:14px;
+  }
+
+  .account-flow-head,
+  .daily-detail-title{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .account-flow-grid{
+    grid-template-columns:1fr;
+  }
+}

@@ -1456,99 +1456,312 @@ export default function Home() {
   }
 
   function renderBatches() {
+    const grouped = [...db.batches]
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .reduce<Record<string, Batch[]>>((map, item) => {
+        (map[item.date] ||= []).push(item);
+        return map;
+      }, {});
+
+    const dailyGroups = Object.entries(grouped).map(([date, items]) => {
+      const cost = items.reduce((sum, item) => sum + item.cost, 0);
+      const arrivals = items.reduce((sum, item) => sum + item.wechat, 0);
+      const posts = items.reduce((sum, item) => sum + item.posts, 0);
+
+      const accountMap = new Map<
+        string,
+        {
+          name: string;
+          owner: string;
+          arrivals: number;
+          cost: number;
+          posts: number;
+          batches: number;
+          channels: Set<string>;
+        }
+      >();
+
+      items.forEach((item) => {
+        const name = item.receiverWechat || "未记录承接微信";
+        const current = accountMap.get(name) || {
+          name,
+          owner: item.owner || "未记录",
+          arrivals: 0,
+          cost: 0,
+          posts: 0,
+          batches: 0,
+          channels: new Set<string>(),
+        };
+        current.arrivals += item.wechat;
+        current.cost += item.cost;
+        current.posts += item.posts;
+        current.batches += 1;
+        current.channels.add(item.channel);
+        accountMap.set(name, current);
+      });
+
+      const accounts = [...accountMap.values()].sort(
+        (a, b) => b.arrivals - a.arrivals,
+      );
+
+      return {
+        date,
+        items,
+        cost,
+        arrivals,
+        posts,
+        accounts,
+        cac: arrivals ? cost / arrivals : 0,
+      };
+    });
+
+    const latestDate = dailyGroups[0]?.date;
+
     return (
       <section className="panel">
         <div className="panel-head">
           <div>
             <h3>投放批次中心</h3>
             <p className="sub">
-              一组账号统一计算花费和来客，不强行拆分单个小红书账号的微信数
+              先看每天总成本和总来客，再展开查看每个承接微信分别来了多少人
             </p>
           </div>
           <button className="btn primary" onClick={() => open("batch") }>
             ＋新增批次
           </button>
         </div>
+
         <div className="summary-strip">
           <Summary label="累计批次" value={`${db.batches.length}个`} />
-          <Summary label="投放成本" value={money(totals.batchCost)} />
-          <Summary label="批次来客" value={`${db.batches.reduce((sum, item) => sum + item.wechat, 0)}人`} />
-          <Summary label="来客登记" value={`${totals.arrivals}人`} />
-          <Summary label="单客成本" value={money(totals.cac)} />
+          <Summary label="累计投放成本" value={money(totals.batchCost)} />
+          <Summary
+            label="累计批次来客"
+            value={`${db.batches.reduce((sum, item) => sum + item.wechat, 0)}人`}
+          />
+          <Summary label="已登记来客" value={`${totals.arrivals}人`} />
+          <Summary label="累计单客成本" value={money(totals.cac)} />
         </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>日期</th>
-                <th>批次</th>
-                <th>方式</th>
-                <th>承接微信</th>
-                <th>账号组合</th>
-                <th>帖子</th>
-                <th>成本</th>
-                <th>来客</th>
-                <th>负责人</th>
-                <th>备注</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...db.batches]
-                .sort((a, b) => b.date.localeCompare(a.date))
-                .map((item) => (
-                  <tr key={item.id}>
-                    <td>{item.date}</td>
-                    <td>{item.batchNo}</td>
-                    <td>{item.channel}</td>
-                    <td>{item.receiverWechat}</td>
-                    <td>
-                      {[item.account1, item.account2]
-                        .filter(Boolean)
-                        .join(" + ") || "—"}
-                    </td>
-                    <td>{item.posts}</td>
-                    <td>{money(item.cost)}</td>
-                    <td>{item.wechat}</td>
-                    <td>{item.owner}</td>
-                    <td>{item.note || "—"}</td>
-                    <td>
-                      <button
-                        className="btn sm"
-                        onClick={() => open("batch", item.id)}
-                      >
-                        编辑
-                      </button>{" "}
-                      <button
-                        className="btn sm"
-                        onClick={() =>
-                          open("lead", "", {
-                            leadDate: item.date,
-                            batchId: item.id,
-                            batchNo: item.batchNo,
-                            member: item.owner,
-                            receiverWechat: item.receiverWechat,
-                            arrivals: item.wechat,
-                          })
-                        }
-                      >
-                        登记来客
-                      </button>{" "}
-                      <button
-                        className="btn sm danger"
-                        onClick={() => remove("batches", item.id)}
-                      >
-                        删除
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
+
+        {dailyGroups.length === 0 ? (
+          <div className="empty">
+            暂无投放批次。点击右上角“新增批次”开始记录。
+          </div>
+        ) : (
+          <div className="daily-batch-list">
+            {dailyGroups.map((group) => {
+              const maxAccountArrivals = Math.max(
+                ...group.accounts.map((account) => account.arrivals),
+                1,
+              );
+
+              return (
+                <details
+                  className="daily-batch-group"
+                  key={group.date}
+                  open={group.date === latestDate}
+                >
+                  <summary className="daily-batch-summary">
+                    <div className="daily-batch-date">
+                      <strong>{group.date}</strong>
+                      <span>
+                        {group.items.length}个批次 · {group.accounts.length}个承接微信
+                      </span>
+                    </div>
+                    <div className="daily-batch-kpis">
+                      <div>
+                        <span>当天来客</span>
+                        <strong>{group.arrivals}人</strong>
+                      </div>
+                      <div>
+                        <span>当天成本</span>
+                        <strong>{money(group.cost)}</strong>
+                      </div>
+                      <div>
+                        <span>单客成本</span>
+                        <strong>{money(group.cac)}</strong>
+                      </div>
+                      <div>
+                        <span>发布帖子</span>
+                        <strong>{group.posts}篇</strong>
+                      </div>
+                    </div>
+                    <span className="daily-batch-toggle">展开账号明细</span>
+                  </summary>
+
+                  <div className="daily-batch-content">
+                    <div className="account-flow-head">
+                      <div>
+                        <h4>承接微信来客分布</h4>
+                        <p>
+                          按当天实际来客从高到低排列，直接判断哪些微信承接量更高
+                        </p>
+                      </div>
+                      <span>
+                        日合计：{group.arrivals}人 / {money(group.cost)}
+                      </span>
+                    </div>
+
+                    <div className="account-flow-grid">
+                      {group.accounts.map((account, index) => {
+                        const share = group.arrivals
+                          ? (account.arrivals / group.arrivals) * 100
+                          : 0;
+                        const accountCac = account.arrivals
+                          ? account.cost / account.arrivals
+                          : 0;
+
+                        return (
+                          <div className="account-flow-card" key={account.name}>
+                            <div className="account-flow-title">
+                              <div>
+                                <span className={`account-rank rank-${index + 1}`}>
+                                  {index + 1}
+                                </span>
+                                <strong>{account.name}</strong>
+                              </div>
+                              <small>{account.owner}</small>
+                            </div>
+
+                            <div className="account-flow-number">
+                              <strong>{account.arrivals}</strong>
+                              <span>人来客</span>
+                            </div>
+
+                            <div className="account-flow-meter">
+                              <i
+                                style={{
+                                  width: `${Math.max(
+                                    4,
+                                    account.arrivals /
+                                      maxAccountArrivals *
+                                      100,
+                                  )}%`,
+                                }}
+                              />
+                            </div>
+
+                            <div className="account-flow-stats">
+                              <div>
+                                <span>当天占比</span>
+                                <strong>{percent(share)}</strong>
+                              </div>
+                              <div>
+                                <span>投放成本</span>
+                                <strong>{money(account.cost)}</strong>
+                              </div>
+                              <div>
+                                <span>单客成本</span>
+                                <strong>{money(accountCac)}</strong>
+                              </div>
+                              <div>
+                                <span>批次/帖子</span>
+                                <strong>
+                                  {account.batches} / {account.posts}
+                                </strong>
+                              </div>
+                            </div>
+
+                            <div className="account-flow-channel">
+                              {[...account.channels].join("、") || "未记录方式"}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="daily-detail-title">
+                      <div>
+                        <h4>当天批次明细</h4>
+                        <p>需要修改成本或来客时，直接在对应批次点击编辑</p>
+                      </div>
+                    </div>
+
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>批次</th>
+                            <th>方式</th>
+                            <th>承接微信</th>
+                            <th>账号组合</th>
+                            <th>帖子</th>
+                            <th>成本</th>
+                            <th>来客</th>
+                            <th>单客成本</th>
+                            <th>负责人</th>
+                            <th>备注</th>
+                            <th>操作</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.items.map((item) => (
+                            <tr key={item.id}>
+                              <td>{item.batchNo}</td>
+                              <td>{item.channel}</td>
+                              <td>
+                                <strong>{item.receiverWechat || "未记录"}</strong>
+                              </td>
+                              <td>
+                                {[item.account1, item.account2]
+                                  .filter(Boolean)
+                                  .join(" + ") || "—"}
+                              </td>
+                              <td>{item.posts}</td>
+                              <td>{money(item.cost)}</td>
+                              <td>
+                                <strong className="money-pos">
+                                  {item.wechat}人
+                                </strong>
+                              </td>
+                              <td>
+                                {money(item.wechat ? item.cost / item.wechat : 0)}
+                              </td>
+                              <td>{item.owner}</td>
+                              <td>{item.note || "—"}</td>
+                              <td>
+                                <button
+                                  className="btn sm"
+                                  onClick={() => open("batch", item.id)}
+                                >
+                                  编辑
+                                </button>{" "}
+                                <button
+                                  className="btn sm"
+                                  onClick={() =>
+                                    open("lead", "", {
+                                      leadDate: item.date,
+                                      batchId: item.id,
+                                      batchNo: item.batchNo,
+                                      member: item.owner,
+                                      receiverWechat: item.receiverWechat,
+                                      arrivals: item.wechat,
+                                    })
+                                  }
+                                >
+                                  登记来客
+                                </button>{" "}
+                                <button
+                                  className="btn sm danger"
+                                  onClick={() => remove("batches", item.id)}
+                                >
+                                  删除
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+        )}
       </section>
     );
   }
+
 
   function renderFunnel() {
     const tomorrow = addDays(analysisDate, 1);
@@ -2414,7 +2627,7 @@ export default function Home() {
           <div className="brand-mark">良</div>
           <div>
             <h1>良辰运营中台</h1>
-            <small>FLOW OPERATIONS V4.6</small>
+            <small>FLOW OPERATIONS V4.7</small>
           </div>
         </div>
         <div className="nav">
