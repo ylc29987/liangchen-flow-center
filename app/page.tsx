@@ -173,6 +173,29 @@ type ModalState = {
   preset?: Record<string, string | number>;
 } | null;
 
+type DailyProfitDetail = {
+  date: string;
+  orders: Order[];
+  batches: Batch[];
+  expenses: Expense[];
+  projects: Array<{
+    project: string;
+    revenue: number;
+    salary: number;
+    referralFee: number;
+    otherCost: number;
+    orderProfit: number;
+  }>;
+  grossRevenue: number;
+  salaryCost: number;
+  referralFees: number;
+  otherDirectCost: number;
+  batchCost: number;
+  operatingExpenses: number;
+  pureProfit: number;
+  netMargin: number;
+};
+
 const STORAGE_KEY = "liangchen_v42";
 const uid = () => `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 const isoNow = () => new Date().toISOString();
@@ -771,6 +794,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [analysisDate, setAnalysisDate] = useState(today());
   const [profitOpen, setProfitOpen] = useState(false);
+  const [selectedProfitDate, setSelectedProfitDate] = useState<string | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -1080,20 +1104,115 @@ export default function Home() {
     [db.projects, db.orders],
   );
 
-  const dailyProfit = useMemo(() => {
-    const map: Record<string, number> = {};
+  const dailyProfitDetails = useMemo<DailyProfitDetail[]>(() => {
+    const dates = new Set<string>();
     db.orders.forEach((item) => {
-      if (item.status === "已取消") return;
-      map[item.date] = (map[item.date] || 0) + orderProfit(item);
+      if (item.status !== "已取消") dates.add(item.date);
     });
-    db.batches.forEach((item) => {
-      map[item.date] = (map[item.date] || 0) - item.cost;
-    });
-    db.expenses.forEach((item) => {
-      map[item.date] = (map[item.date] || 0) - item.amount;
-    });
-    return Object.entries(map).sort().slice(-7);
+    db.batches.forEach((item) => dates.add(item.date));
+    db.expenses.forEach((item) => dates.add(item.date));
+
+    return [...dates]
+      .sort()
+      .map((date) => {
+        const orders = db.orders.filter(
+          (item) => item.date === date && item.status !== "已取消",
+        );
+        const batches = db.batches.filter((item) => item.date === date);
+        const expenses = db.expenses.filter((item) => item.date === date);
+        const grossRevenue = orders.reduce(
+          (sum, item) => sum + item.income,
+          0,
+        );
+        const salaryCost = orders.reduce(
+          (sum, item) => sum + item.salary,
+          0,
+        );
+        const referralFees = orders.reduce(
+          (sum, item) => sum + item.referralFee,
+          0,
+        );
+        const otherDirectCost = orders.reduce(
+          (sum, item) => sum + item.otherCost,
+          0,
+        );
+        const batchCost = batches.reduce(
+          (sum, item) => sum + item.cost,
+          0,
+        );
+        const operatingExpenses = expenses.reduce(
+          (sum, item) => sum + item.amount,
+          0,
+        );
+        const pureProfit =
+          grossRevenue -
+          salaryCost -
+          referralFees -
+          otherDirectCost -
+          batchCost -
+          operatingExpenses;
+
+        const projectMap = new Map<
+          string,
+          {
+            project: string;
+            revenue: number;
+            salary: number;
+            referralFee: number;
+            otherCost: number;
+            orderProfit: number;
+          }
+        >();
+
+        orders.forEach((item) => {
+          const key = item.project || "未分类";
+          const current = projectMap.get(key) || {
+            project: key,
+            revenue: 0,
+            salary: 0,
+            referralFee: 0,
+            otherCost: 0,
+            orderProfit: 0,
+          };
+          current.revenue += item.income;
+          current.salary += item.salary;
+          current.referralFee += item.referralFee;
+          current.otherCost += item.otherCost;
+          current.orderProfit += orderProfit(item);
+          projectMap.set(key, current);
+        });
+
+        return {
+          date,
+          orders,
+          batches,
+          expenses,
+          projects: [...projectMap.values()].sort(
+            (a, b) => b.orderProfit - a.orderProfit,
+          ),
+          grossRevenue,
+          salaryCost,
+          referralFees,
+          otherDirectCost,
+          batchCost,
+          operatingExpenses,
+          pureProfit,
+          netMargin: grossRevenue ? (pureProfit / grossRevenue) * 100 : 0,
+        };
+      });
   }, [db.orders, db.batches, db.expenses]);
+
+  const dailyProfit = useMemo(
+    () =>
+      dailyProfitDetails
+        .map((item) => [item.date, item.pureProfit] as [string, number])
+        .slice(-7),
+    [dailyProfitDetails],
+  );
+
+  const selectedDailyProfit = selectedProfitDate
+    ? dailyProfitDetails.find((item) => item.date === selectedProfitDate)
+    : undefined;
 
   const filteredOrders = db.orders.filter((item) =>
     [
@@ -1167,7 +1286,7 @@ export default function Home() {
   }
 
   function renderDashboard() {
-    const maxProfit = Math.max(...dailyProfit.map(([, value]) => value), 1);
+    const maxProfit = Math.max(...dailyProfit.map(([, value]) => Math.abs(value)), 1);
     const bestProject = [...projectStats].sort(
       (a, b) => b.profit - a.profit,
     )[0];
@@ -1211,29 +1330,39 @@ export default function Home() {
 
         <div className="grid-2">
           <section className="panel">
-            <div className="panel-head">
+            <div className="panel-head chart-panel-head">
               <div>
                 <h3>近7日纯利润趋势</h3>
                 <p className="sub">
                   已扣兼职工资、徒弟送人费、投放成本和运营费用
                 </p>
               </div>
+              <span className="chart-tip">点击任意一天查看利润组成</span>
             </div>
             <div className="mini-chart">
               {dailyProfit.map(([date, value]) => (
                 <div className="bar-wrap" key={date}>
-                  <div
-                    className="bar profit"
-                    style={{
-                      height: `${Math.max(
-                        7,
-                        Math.max(0, value) / maxProfit * 150,
-                      )}px`,
-                    }}
+                  <button
+                    type="button"
+                    className="bar-button"
+                    onClick={() => setSelectedProfitDate(date)}
+                    aria-label={`查看${date}纯利润组成`}
+                    title="点击查看当天纯利润组成"
                   >
-                    <span>{value.toFixed(0)}</span>
-                  </div>
-                  <div className="bar-label">{date.slice(5)}</div>
+                    <div
+                      className={`bar ${value >= 0 ? "profit" : "loss"}`}
+                      style={{
+                        height: `${Math.max(
+                          7,
+                          Math.abs(value) / maxProfit * 150,
+                        )}px`,
+                      }}
+                    >
+                      <span>{value.toFixed(0)}</span>
+                    </div>
+                    <div className="bar-label">{date.slice(5)}</div>
+                    <div className="bar-open-hint">查看明细</div>
+                  </button>
                 </div>
               ))}
             </div>
@@ -2285,7 +2414,7 @@ export default function Home() {
           <div className="brand-mark">良</div>
           <div>
             <h1>良辰运营中台</h1>
-            <small>FLOW OPERATIONS V4.5</small>
+            <small>FLOW OPERATIONS V4.6</small>
           </div>
         </div>
         <div className="nav">
@@ -2362,6 +2491,13 @@ export default function Home() {
           projects={profitByProject}
           referrals={referralBreakdown}
           close={() => setProfitOpen(false)}
+        />
+      )}
+
+      {selectedDailyProfit && (
+        <DailyProfitBreakdownModal
+          detail={selectedDailyProfit}
+          close={() => setSelectedProfitDate(null)}
         />
       )}
     </div>
@@ -2515,6 +2651,282 @@ function ProfitBreakdownModal({
               <Metric label="当前净利率" value={percent(totals.netMargin)} />
             </div>
           </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function DailyProfitBreakdownModal({
+  detail,
+  close,
+}: {
+  detail: DailyProfitDetail;
+  close: () => void;
+}) {
+  const totalDeductions =
+    detail.salaryCost +
+    detail.referralFees +
+    detail.otherDirectCost +
+    detail.batchCost +
+    detail.operatingExpenses;
+
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) close();
+      }}
+    >
+      <div className="modal daily-profit-modal">
+        <div className="modal-head">
+          <div>
+            <div className="daily-profit-title-row">
+              <h3>{detail.date} 纯利润组成</h3>
+              <span
+                className={`daily-profit-status ${
+                  detail.pureProfit >= 0 ? "positive" : "negative"
+                }`}
+              >
+                {detail.pureProfit >= 0 ? "盈利" : "亏损"}
+              </span>
+            </div>
+            <p className="sub">
+              当天企业结算减去全部直接成本、投放成本和运营费用
+            </p>
+          </div>
+          <button className="close" onClick={close}>
+            ×
+          </button>
+        </div>
+
+        <div className="daily-profit-hero">
+          <div>
+            <span>当天企业结算</span>
+            <strong>{money(detail.grossRevenue)}</strong>
+            <small>{detail.orders.length}条订单</small>
+          </div>
+          <div>
+            <span>当天全部扣除</span>
+            <strong>{money(totalDeductions)}</strong>
+            <small>工资、送人费、投放与运营费用</small>
+          </div>
+          <div className={detail.pureProfit >= 0 ? "positive" : "negative"}>
+            <span>当天纯利润</span>
+            <strong>{money(detail.pureProfit)}</strong>
+            <small>净利率 {percent(detail.netMargin)}</small>
+          </div>
+        </div>
+
+        <div className="profit-equation daily-profit-equation">
+          <div>
+            <span>企业结算</span>
+            <strong>{money(detail.grossRevenue)}</strong>
+          </div>
+          <b>−</b>
+          <div>
+            <span>兼职工资</span>
+            <strong>{money(detail.salaryCost)}</strong>
+          </div>
+          <b>−</b>
+          <div>
+            <span>徒弟送人费</span>
+            <strong>{money(detail.referralFees)}</strong>
+          </div>
+          <b>−</b>
+          <div>
+            <span>其他直接成本</span>
+            <strong>{money(detail.otherDirectCost)}</strong>
+          </div>
+          <b>−</b>
+          <div>
+            <span>投放成本</span>
+            <strong>{money(detail.batchCost)}</strong>
+          </div>
+          <b>−</b>
+          <div>
+            <span>运营费用</span>
+            <strong>{money(detail.operatingExpenses)}</strong>
+          </div>
+          <b>=</b>
+          <div className="profit-result">
+            <span>当天纯利润</span>
+            <strong>{money(detail.pureProfit)}</strong>
+          </div>
+        </div>
+
+        <div className="daily-profit-grid section-gap">
+          <section className="inner-panel">
+            <div className="inner-panel-head">
+              <div>
+                <h4>订单收入与利润明细</h4>
+                <p>每一单都可以看到结算、工资、送人费和订单利润</p>
+              </div>
+              <strong>{money(detail.grossRevenue)}</strong>
+            </div>
+            <div className="table-wrap compact-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>项目</th>
+                    <th>人员</th>
+                    <th>企业结算</th>
+                    <th>兼职工资</th>
+                    <th>送人费</th>
+                    <th>其他成本</th>
+                    <th>订单利润</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detail.orders.length === 0 ? (
+                    <tr>
+                      <td colSpan={7}>
+                        <div className="empty">当天没有订单收入</div>
+                      </td>
+                    </tr>
+                  ) : (
+                    detail.orders.map((item) => {
+                      const profit =
+                        item.income -
+                        item.salary -
+                        item.referralFee -
+                        item.otherCost;
+                      return (
+                        <tr key={item.id}>
+                          <td>{item.project || "未分类"}</td>
+                          <td>{item.name || "—"}</td>
+                          <td>{money(item.income)}</td>
+                          <td>{money(item.salary)}</td>
+                          <td>
+                            {item.referralMember
+                              ? `${item.referralMember} · ${money(
+                                  item.referralFee,
+                                )}`
+                              : money(item.referralFee)}
+                          </td>
+                          <td>{money(item.otherCost)}</td>
+                          <td
+                            className={
+                              profit >= 0 ? "money-pos" : "money-neg"
+                            }
+                          >
+                            {money(profit)}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="inner-panel">
+            <div className="inner-panel-head">
+              <div>
+                <h4>按项目汇总</h4>
+                <p>快速判断当天利润主要来自哪个项目</p>
+              </div>
+            </div>
+            <div className="metric-list">
+              {detail.projects.length === 0 ? (
+                <div className="empty">当天暂无项目收入</div>
+              ) : (
+                detail.projects.map((item) => (
+                  <div className="daily-project-row" key={item.project}>
+                    <div>
+                      <strong>{item.project}</strong>
+                      <span>
+                        结算 {money(item.revenue)} · 直接成本{" "}
+                        {money(
+                          item.salary +
+                            item.referralFee +
+                            item.otherCost,
+                        )}
+                      </span>
+                    </div>
+                    <b
+                      className={
+                        item.orderProfit >= 0
+                          ? "money-pos"
+                          : "money-neg"
+                      }
+                    >
+                      {money(item.orderProfit)}
+                    </b>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        </div>
+
+        <div className="daily-profit-grid section-gap">
+          <section className="inner-panel">
+            <div className="inner-panel-head">
+              <div>
+                <h4>投放成本</h4>
+                <p>当天所有投放批次的实际支出</p>
+              </div>
+              <strong className="money-neg">
+                {money(detail.batchCost)}
+              </strong>
+            </div>
+            <div className="deduction-list">
+              {detail.batches.length === 0 ? (
+                <div className="empty">当天没有投放成本</div>
+              ) : (
+                detail.batches.map((item) => (
+                  <div className="deduction-row" key={item.id}>
+                    <div>
+                      <strong>{item.batchNo || "未命名批次"}</strong>
+                      <span>
+                        {item.channel} · {item.receiverWechat || "未记录微信"}
+                      </span>
+                    </div>
+                    <b>{money(item.cost)}</b>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="inner-panel">
+            <div className="inner-panel-head">
+              <div>
+                <h4>运营费用</h4>
+                <p>员工工资、客服工资和其他非订单费用</p>
+              </div>
+              <strong className="money-neg">
+                {money(detail.operatingExpenses)}
+              </strong>
+            </div>
+            <div className="deduction-list">
+              {detail.expenses.length === 0 ? (
+                <div className="empty">当天没有运营费用</div>
+              ) : (
+                detail.expenses.map((item) => (
+                  <div className="deduction-row" key={item.id}>
+                    <div>
+                      <strong>{item.category}</strong>
+                      <span>
+                        {item.payee || "未记录收款人"} ·{" "}
+                        {item.note || "无备注"}
+                      </span>
+                    </div>
+                    <b>{money(item.amount)}</b>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        </div>
+
+        <div className="modal-actions actions">
+          <button className="btn primary" onClick={close}>
+            关闭明细
+          </button>
         </div>
       </div>
     </div>
