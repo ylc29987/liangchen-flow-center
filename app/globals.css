@@ -736,3 +736,229 @@ tr:hover td{background:#fafbfe}
   .member-grid{grid-template-columns:1fr}
   .title h2{font-size:1.48rem}
 }
+
+/* V4.5 interaction and accounting enhancements */
+.kpi{
+  text-align:left;
+  color:inherit;
+  cursor:default;
+}
+
+.kpi-clickable{
+  cursor:pointer;
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+
+.kpi-clickable:hover{
+  transform:translateY(-3px);
+  box-shadow:0 18px 42px rgba(26,72,54,.15);
+}
+
+.kpi-profit{
+  color:#fff;
+  border-color:#16a36f;
+  background:linear-gradient(145deg,#0fa674,#24bd8b);
+  box-shadow:0 16px 38px rgba(15,166,116,.22);
+}
+
+.kpi-profit .label,
+.kpi-profit .value,
+.kpi-profit .hint{
+  color:#fff;
+}
+
+.kpi-profit .hint{opacity:.84}
+
+.order-help{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:14px;
+}
+
+.order-help span{
+  padding:7px 10px;
+  border:1px solid #dfe5ff;
+  border-radius:999px;
+  color:#4f59b8;
+  background:#f5f6ff;
+  font-size:.75rem;
+  font-weight:700;
+}
+
+.editable-row{cursor:pointer}
+.editable-row td:first-child{border-left:3px solid transparent}
+.editable-row:hover td:first-child{border-left-color:var(--primary)}
+
+td small{
+  display:block;
+  color:var(--muted);
+  font-size:.68rem;
+  margin-top:2px;
+}
+
+.repeat-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:15px;
+}
+
+.repeat-card{
+  padding:18px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 8px 24px rgba(45,60,84,.05);
+}
+
+.repeat-head{
+  display:flex;
+  align-items:center;
+  gap:11px;
+}
+
+.repeat-head h4{
+  margin:0;
+  font-size:1.02rem;
+}
+
+.repeat-head>div:nth-child(2) span{
+  color:var(--muted);
+  font-size:.74rem;
+}
+
+.repeat-head>.tag{margin-left:auto}
+
+.repeat-metrics{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin:15px 0;
+}
+
+.repeat-card p{
+  min-height:44px;
+  color:var(--muted);
+  font-size:.78rem;
+}
+
+.panel-span{grid-column:1/-1}
+
+.member-title{
+  display:flex;
+  align-items:center;
+  gap:11px;
+}
+
+.member-title h4{
+  margin:0;
+  font-size:1.02rem;
+}
+
+.member-title span{
+  color:var(--muted);
+  font-size:.74rem;
+}
+
+.form-section{
+  padding:16px;
+  margin-bottom:14px;
+  border:1px solid #e4eaf1;
+  border-radius:14px;
+  background:#fbfcfe;
+}
+
+.form-section h4{
+  margin:0 0 13px;
+  color:#2c3950;
+  font-size:.94rem;
+}
+
+.edit-notice{
+  color:#7b58ba !important;
+  font-weight:700;
+}
+
+.profit-value{
+  color:#087852;
+  background:#eaf9f3;
+  border-color:#bfe7d8;
+  font-size:1.05rem;
+}
+
+.profit-modal{width:min(1100px,96vw)}
+
+.profit-equation{
+  display:flex;
+  align-items:stretch;
+  gap:9px;
+  overflow:auto;
+  padding:8px 2px 14px;
+}
+
+.profit-equation>div{
+  min-width:128px;
+  padding:13px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:#f8fafc;
+}
+
+.profit-equation span{
+  display:block;
+  color:var(--muted);
+  font-size:.72rem;
+}
+
+.profit-equation strong{
+  display:block;
+  margin-top:5px;
+  color:#29374d;
+  font-size:1rem;
+}
+
+.profit-equation>b{
+  display:grid;
+  place-items:center;
+  color:#8a98aa;
+  font-size:1.2rem;
+}
+
+.profit-equation .profit-result{
+  color:#fff;
+  border-color:#16a36f;
+  background:linear-gradient(145deg,#0fa674,#24bd8b);
+}
+
+.profit-equation .profit-result span,
+.profit-equation .profit-result strong{color:#fff}
+
+.inner-panel{
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fafbfd;
+}
+
+.inner-panel h4{
+  margin:0 0 12px;
+  color:#2a374d;
+}
+
+.compact-table table{min-width:560px}
+.compact-table th,.compact-table td{padding:10px 11px}
+
+.modal .sub{margin:4px 0 0;color:var(--muted);font-size:.76rem}
+
+@media(max-width:1250px){
+  .repeat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .profit-equation{align-items:center}
+}
+
+@media(max-width:760px){
+  .repeat-grid{grid-template-columns:1fr}
+  .repeat-metrics{grid-template-columns:1fr}
+  .profit-equation{display:grid;grid-template-columns:1fr}
+  .profit-equation>b{height:20px}
+  .form-section{padding:12px}
+}
