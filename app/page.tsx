@@ -1,95 +1,2767 @@
-
 "use client";
-import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 
-type Order={id:string;date:string;project:string;name:string;phone:string;source:string;income:number;salary:number;trafficCost:number;otherCost:number;owner:string;status:"已完成"|"待结算"|"已取消";note:string};
-type Traffic={id:string;date:string;channel:string;posts:number;views:number;messages:number;wechat:number;consultations:number;deals:number;cost:number;revenue:number;note:string};
-type Contact={id:string;name:string;phone:string;gender:"男"|"女"|"未知";city:string;source:string;projects:string;rating:"A"|"B"|"C";tags:string;note:string};
-type Team={id:string;name:string;role:string;leads:number;consultations:number;deals:number;revenue:number;cost:number;note:string};
-type Project={id:string;name:string;category:string;settlement:number;wage:number;status:"进行中"|"暂停"|"结束";note:string};
-type Review={id:string;date:string;income:number;profit:number;trafficCost:number;wechat:number;deals:number;best:string;problem:string;plan:string};
-type Expense={id:string;date:string;category:string;amount:number;payee:string;owner:string;note:string};
-type DB={orders:Order[];traffic:Traffic[];contacts:Contact[];team:Team[];projects:Project[];reviews:Review[];expenses:Expense[]};
-const uid=()=>`${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
-const money=(n:number)=>`¥${Number(n||0).toLocaleString("zh-CN",{maximumFractionDigits:2})}`;
-const pct=(n:number)=>`${(Number.isFinite(n)?n:0).toFixed(1)}%`;
-const seed:DB={
-orders:[
-{id:"o1",date:"2026-07-20",project:"星沙直播",name:"郑鑫、张东妹",phone:"",source:"自有名单",income:700,salary:350,trafficCost:0,otherCost:0,owner:"良辰",status:"已完成",note:"两人合计，700-350=350"},
-{id:"o2",date:"2026-07-20",project:"好评",name:"刘鑫、尹润发",phone:"",source:"前天好评",income:280,salary:0,trafficCost:0,otherCost:0,owner:"良辰",status:"已完成",note:"流量成本126、哲立工资100另记"},
-{id:"o3",date:"2026-07-20",project:"证券",name:"肖恒月、樊柳玥",phone:"",source:"自己人/九月",income:0,salary:0,trafficCost:0,otherCost:0,owner:"良辰",status:"待结算",note:"费用次日确认"},
-{id:"o4",date:"2026-07-21",project:"好评",name:"龙韬、张紫怡、李楠锋、陈思晴、李雨杰等",phone:"18974128256 / 17673938205 / 19366907086 / 18873140212 / 15873626083",source:"昨日名单",income:1080,salary:0,trafficCost:0,otherCost:0,owner:"良辰",status:"已完成",note:"6个人，一个是代理的；1000+80=1080"},
-{id:"o5",date:"2026-07-21",project:"星沙直播",name:"尹颢竣",phone:"",source:"自有流量",income:350,salary:150,trafficCost:0,otherCost:0,owner:"良辰",status:"已完成",note:"350-150=200"},
-{id:"o6",date:"2026-07-21",project:"土桥APP",name:"王宝莹、李俊奇",phone:"",source:"自有流量",income:234,salary:0,trafficCost:0,otherCost:0,owner:"良辰",status:"已完成",note:""},
-{id:"o7",date:"2026-07-21",project:"星沙APP",name:"刘鑫",phone:"",source:"自有流量",income:169,salary:0,trafficCost:0,otherCost:0,owner:"良辰",status:"已完成",note:"130×1.3=169"},
-{id:"o8",date:"2026-07-21",project:"小红书账号",name:"账号交易",phone:"",source:"小红书",income:40,salary:0,trafficCost:0,otherCost:0,owner:"良辰",status:"已完成",note:"出了一个账号40"},
-{id:"o9",date:"2026-07-21",project:"证券",name:"杨洲权、刘远娇、文家宝、贺鹏杰、朱建文、谭盺怡、左铭嘉",phone:"",source:"自有/小朱/王旭",income:480,salary:0,trafficCost:0,otherCost:0,owner:"良辰",status:"已完成",note:"按原始净收入公式记录"},
-{id:"o10",date:"2026-07-22",project:"岳麓APP",name:"陈思晴、陈慧妮",phone:"18873140212",source:"自有流量",income:273,salary:0,trafficCost:0,otherCost:0,owner:"良辰",status:"已完成",note:"210×1.3=273"},
-{id:"o11",date:"2026-07-22",project:"土桥",name:"莫琨",phone:"",source:"自有流量",income:195,salary:0,trafficCost:0,otherCost:0,owner:"良辰",status:"已完成",note:"150×1.3=195"},
-{id:"o12",date:"2026-07-22",project:"证券",name:"韦德华、唐慧",phone:"",source:"自有流量",income:170,salary:0,trafficCost:0,otherCost:0,owner:"良辰",status:"已完成",note:"130+40=170"},
-{id:"o13",date:"2026-07-23",project:"线上网店",name:"陈思晴",phone:"18873140212",source:"复购用户",income:260,salary:100,trafficCost:0,otherCost:0,owner:"良辰",status:"已完成",note:"260-100=160"}
-],
-traffic:[
-{id:"t1",date:"2026-07-20",channel:"小红书代发",posts:16,views:5400,messages:58,wechat:35,consultations:24,deals:4,cost:126,revenue:980,note:"流量成本126"},
-{id:"t2",date:"2026-07-21",channel:"小红书代发",posts:18,views:6500,messages:72,wechat:46,consultations:31,deals:13,cost:140,revenue:2353,note:"综合流量成本140"},
-{id:"t3",date:"2026-07-22",channel:"小红书代发",posts:12,views:4100,messages:43,wechat:28,consultations:18,deals:5,cost:90,revenue:638,note:"综合流量成本90"},
-{id:"t4",date:"2026-07-23",channel:"自然复购",posts:0,views:0,messages:1,wechat:1,consultations:1,deals:1,cost:0,revenue:260,note:"陈思晴复购"}
-],
-expenses:[
-{id:"e1",date:"2026-07-20",category:"员工工资",amount:100,payee:"哲立",owner:"良辰",note:"7.20哲立工资"},
-{id:"e2",date:"2026-07-21",category:"员工工资",amount:268,payee:"哲立",owner:"良辰",note:"7.21哲立工资"},
-{id:"e3",date:"2026-07-22",category:"员工工资",amount:160,payee:"哲立",owner:"良辰",note:"7.22哲立工资"}
-],
-contacts:[
-{id:"c1",name:"陈思晴",phone:"18873140212",gender:"女",city:"长沙",source:"好评名单",projects:"好评、岳麓APP、线上网店",rating:"A",tags:"高复购,执行稳定",note:"连续合作3次"},
-{id:"c2",name:"刘鑫",phone:"",gender:"未知",city:"长沙",source:"自有名单",projects:"好评、星沙APP",rating:"A",tags:"多项目",note:""},
-{id:"c3",name:"龙韬",phone:"18974128256",gender:"男",city:"长沙",source:"好评名单",projects:"好评",rating:"B",tags:"可二次转化",note:""},
-{id:"c4",name:"张紫怡",phone:"17673938205",gender:"女",city:"长沙",source:"好评名单",projects:"好评",rating:"B",tags:"可二次转化",note:""},
-{id:"c5",name:"李楠锋",phone:"19366907086",gender:"男",city:"长沙",source:"好评名单",projects:"好评",rating:"B",tags:"可二次转化",note:""},
-{id:"c6",name:"李雨杰",phone:"15873626083",gender:"未知",city:"长沙",source:"好评名单",projects:"好评",rating:"B",tags:"可二次转化",note:""}
-],
-team:[
-{id:"m1",name:"良辰",role:"管理员",leads:74,consultations:50,deals:13,revenue:2747,cost:230,note:"主账号承接"},
-{id:"m2",name:"哲立",role:"核心徒弟",leads:30,consultations:20,deals:5,revenue:800,cost:528,note:"历史工资支出"},
-{id:"m3",name:"徒弟B",role:"转化成员",leads:20,consultations:12,deals:3,revenue:420,cost:0,note:"待持续统计"}
-],
-projects:[
-{id:"p1",name:"证券",category:"拉新",settlement:130,wage:40,status:"进行中",note:"不同卡类费用不同"},
-{id:"p2",name:"星沙直播",category:"直播充场",settlement:350,wage:150,status:"进行中",note:""},
-{id:"p3",name:"好评",category:"线下任务",settlement:180,wage:0,status:"进行中",note:"按批次结算"},
-{id:"p4",name:"岳麓APP",category:"APP拉新",settlement:136.5,wage:0,status:"进行中",note:"按1.3系数结算"},
-{id:"p5",name:"线上网店",category:"线上任务",settlement:260,wage:100,status:"进行中",note:""}
-],
-reviews:[
-{id:"r1",date:"2026-07-20",income:980,profit:404,trafficCost:126,wechat:35,deals:4,best:"星沙直播和好评同时贡献",problem:"证券费用延迟结算，利润口径不完整",plan:"补齐待结算项目，分开记录收入与成本"},
-{id:"r2",date:"2026-07-21",income:2353,profit:1795,trafficCost:140,wechat:46,deals:13,best:"好评、证券、APP多项目并行",problem:"名单来源和项目成本分摊不够细",plan:"开始记录渠道、负责人、联系方式"},
-{id:"r3",date:"2026-07-22",income:638,profit:388,trafficCost:90,wechat:28,deals:5,best:"岳麓APP与土桥保持正利润",problem:"证券利润偏低",plan:"复核证券成本并设置最低利润线"},
-{id:"r4",date:"2026-07-23",income:260,profit:160,trafficCost:0,wechat:1,deals:1,best:"老用户复购，无新增获客成本",problem:"当日订单量偏少",plan:"扩大抖音男性流量测试，召回A级兼职"}
-]};
-const navs=[["dashboard","经营驾驶舱","◫"],["orders","订单利润","¥"],["traffic","流量中心","↗"],["expenses","费用中心","￥"],["crm","兼职CRM","◎"],["team","团队管理","♟"],["projects","项目中心","◆"],["reviews","每日复盘","✓"],["data","数据管理","⇩"]];
-export default function Home(){
-const [db,setDb]=useState<DB>(seed),[ready,setReady]=useState(false),[tab,setTab]=useState("dashboard"),[modal,setModal]=useState<string|null>(null),[editId,setEditId]=useState(""),[query,setQuery]=useState("");const importRef=useRef<HTMLInputElement>(null);
-useEffect(()=>{const raw=localStorage.getItem("liangchen_v42");if(raw)try{setDb(JSON.parse(raw))}catch{}setReady(true)},[]);useEffect(()=>{if(ready)localStorage.setItem("liangchen_v42",JSON.stringify(db))},[db,ready]);
-const orderProfit=(o:Order)=>o.income-o.salary-o.trafficCost-o.otherCost;
-const totals=useMemo(()=>{const active=db.orders.filter(o=>o.status!=="已取消");const income=active.reduce((s,o)=>s+o.income,0),direct=active.reduce((s,o)=>s+o.salary+o.trafficCost+o.otherCost,0),trafficCost=db.traffic.reduce((s,t)=>s+t.cost,0),expenses=db.expenses.reduce((s,e)=>s+e.amount,0),profit=income-direct-trafficCost-expenses,wechat=db.traffic.reduce((s,t)=>s+t.wechat,0),deals=db.traffic.reduce((s,t)=>s+t.deals,0);return{income,direct,trafficCost,expenses,profit,wechat,deals,roi:trafficCost?profit/trafficCost:0}},[db]);
-const daily=useMemo(()=>{const map:Record<string,{income:number;profit:number}>={};db.orders.forEach(o=>{if(!map[o.date])map[o.date]={income:0,profit:0};if(o.status!=="已取消"){map[o.date].income+=o.income;map[o.date].profit+=orderProfit(o)}});db.traffic.forEach(t=>{if(!map[t.date])map[t.date]={income:0,profit:0};map[t.date].profit-=t.cost});db.expenses.forEach(e=>{if(!map[e.date])map[e.date]={income:0,profit:0};map[e.date].profit-=e.amount});return Object.entries(map).sort().slice(-7)},[db]);
-const channelRanking=useMemo(()=>[...db.traffic].map(t=>({...t,cac:t.wechat?t.cost/t.wechat:0,dealCost:t.deals?t.cost/t.deals:0,roi:t.cost?(t.revenue-t.cost)/t.cost:0})).sort((a,b)=>b.roi-a.roi),[db]);
-const projectStats=useMemo(()=>db.projects.map(p=>{const os=db.orders.filter(o=>o.project===p.name&&o.status!=="已取消");return{...p,orders:os.length,income:os.reduce((s,o)=>s+o.income,0),profit:os.reduce((s,o)=>s+orderProfit(o),0)}}),[db]);
-const filteredOrders=db.orders.filter(o=>[o.name,o.phone,o.project,o.source,o.owner].join(" ").toLowerCase().includes(query.toLowerCase()));const filteredContacts=db.contacts.filter(c=>[c.name,c.phone,c.projects,c.tags,c.source].join(" ").toLowerCase().includes(query.toLowerCase()));
-function open(type:string,id=""){setModal(type);setEditId(id)}function remove(key:keyof DB,id:string){if(confirm("确认删除这条记录？"))setDb(prev=>({...prev,[key]:(prev[key] as any[]).filter(x=>x.id!==id)}))}
-function exportData(){const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`良辰运营中台备份_${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href)}
-function importData(file:File){const r=new FileReader();r.onload=()=>{try{setDb(JSON.parse(String(r.result)));alert("导入成功")}catch{alert("文件格式错误")}};r.readAsText(file)}
-function dashboard(){const max=Math.max(...daily.map(([,v])=>v.profit),1),bestChannel=channelRanking[0],bestProject=[...projectStats].sort((a,b)=>b.profit-a.profit)[0],bestMember=[...db.team].sort((a,b)=>(b.deals/(b.consultations||1))-(a.deals/(a.consultations||1)))[0];return <><div className="kpis"><K label="累计收入" value={money(totals.income)} hint={`${db.orders.length}条订单`}/><K label="累计净利润" value={money(totals.profit)} hint={`净利率 ${pct(totals.income?totals.profit/totals.income*100:0)}`}/><K label="流量成本" value={money(totals.trafficCost)} hint={`${db.traffic.length}条记录`}/><K label="新增微信" value={String(totals.wechat)} hint={`单微信 ${money(totals.wechat?totals.trafficCost/totals.wechat:0)}`}/><K label="成交量" value={String(totals.deals)} hint={`成交成本 ${money(totals.deals?totals.trafficCost/totals.deals:0)}`}/><K label="综合ROI" value={totals.roi.toFixed(2)} hint="净利润÷流量成本"/></div><div className="grid-2"><section className="panel"><div className="panel-head"><div><h3>近7日净利润趋势</h3><p className="sub">自动扣除流量成本与日常费用</p></div></div><div className="mini-chart">{daily.map(([d,v])=><div className="bar-wrap" key={d}><div className="bar" style={{height:`${Math.max(6,v.profit/max*145)}px`}}><span>{v.profit}</span></div><div className="bar-label">{d.slice(5)}</div></div>)}</div></section><section className="panel"><div className="panel-head"><div><h3>经营结论</h3><p className="sub">根据现有数据自动判断</p></div></div><div className="metric-list"><div className="metric-row"><span>最高ROI渠道</span><strong>{bestChannel?.channel||"暂无"} {bestChannel?bestChannel.roi.toFixed(2):""}</strong></div><div className="metric-row"><span>最高利润项目</span><strong>{bestProject?.name||"暂无"} {bestProject?money(bestProject.profit):""}</strong></div><div className="metric-row"><span>最高转化成员</span><strong>{bestMember?.name||"暂无"} {bestMember?pct(bestMember.deals/(bestMember.consultations||1)*100):""}</strong></div><div className="metric-row"><span>A级兼职</span><strong>{db.contacts.filter(c=>c.rating==="A").length}人</strong></div></div></section></div><div className="grid-3"><section className="panel"><h3>成本结构</h3><div className="metric-list" style={{marginTop:12}}><div className="metric-row"><span>直接工资/成本</span><strong>{money(totals.direct)}</strong></div><div className="metric-row"><span>流量成本</span><strong>{money(totals.trafficCost)}</strong></div><div className="metric-row"><span>运营费用</span><strong>{money(totals.expenses)}</strong></div></div></section><section className="panel"><h3>项目利润</h3><div className="metric-list" style={{marginTop:12}}>{[...projectStats].sort((a,b)=>b.profit-a.profit).slice(0,4).map(p=><div className="metric-row" key={p.id}><span>{p.name}</span><strong className={p.profit>=0?"money-pos":"money-neg"}>{money(p.profit)}</strong></div>)}</div></section><section className="panel"><h3>系统提醒</h3><div className="notice" style={{marginTop:12}}>{totals.wechat===0?"尚未记录新增微信，无法判断获客成本。":totals.deals===0?"已有流量但未记录成交，需要补齐转化数据。":channelRanking.some(t=>t.roi<0)?"存在负ROI渠道，建议暂停或调整。":"数据链路完整，可继续放大高ROI渠道。"}</div></section></div></>}
-function orders(){return <section className="panel"><div className="panel-head"><div><h3>订单利润中心</h3><p className="sub">订单利润只扣直接工资与直接成本；流量成本、员工工资分别在对应模块记录</p></div><button className="btn primary" onClick={()=>open("order")}>＋新增订单</button></div><div className="toolbar"><input className="search" placeholder="搜索姓名、电话、项目、来源…" value={query} onChange={e=>setQuery(e.target.value)}/></div><div className="table-wrap"><table><thead><tr><th>日期</th><th>项目</th><th>人员</th><th>联系方式</th><th>来源</th><th>收入</th><th>直接工资</th><th>订单利润</th><th>负责人</th><th>状态</th><th>操作</th></tr></thead><tbody>{filteredOrders.map(o=><tr key={o.id}><td>{o.date}</td><td>{o.project}</td><td>{o.name}</td><td>{o.phone||"—"}</td><td>{o.source||"—"}</td><td>{money(o.income)}</td><td>{money(o.salary+o.trafficCost+o.otherCost)}</td><td className={orderProfit(o)>=0?"money-pos":"money-neg"}>{money(orderProfit(o))}</td><td>{o.owner}</td><td><span className={`tag ${o.status==="待结算"?"warn":"a"}`}>{o.status}</span></td><td><button className="btn sm" onClick={()=>open("order",o.id)}>编辑</button> <button className="btn sm danger" onClick={()=>remove("orders",o.id)}>删除</button></td></tr>)}</tbody></table></div></section>}
-function traffic(){return <section className="panel"><div className="panel-head"><div><h3>流量资产中心</h3><p className="sub">统一记录小红书、抖音、截流等渠道</p></div><button className="btn primary" onClick={()=>open("traffic")}>＋新增流量</button></div><div className="table-wrap"><table><thead><tr><th>日期</th><th>渠道</th><th>发布</th><th>曝光</th><th>私信</th><th>新增微信</th><th>咨询</th><th>成交</th><th>成本</th><th>单微信</th><th>成交成本</th><th>ROI</th><th>操作</th></tr></thead><tbody>{channelRanking.map(t=><tr key={t.id}><td>{t.date}</td><td>{t.channel}</td><td>{t.posts}</td><td>{t.views}</td><td>{t.messages}</td><td>{t.wechat}</td><td>{t.consultations}</td><td>{t.deals}</td><td>{money(t.cost)}</td><td>{money(t.cac)}</td><td>{money(t.dealCost)}</td><td className={t.roi>=0?"money-pos":"money-neg"}>{t.roi.toFixed(2)}</td><td><button className="btn sm" onClick={()=>open("traffic",t.id)}>编辑</button> <button className="btn sm danger" onClick={()=>remove("traffic",t.id)}>删除</button></td></tr>)}</tbody></table></div></section>}
-function expenses(){return <section className="panel"><div className="panel-head"><div><h3>费用中心</h3><p className="sub">记录哲立工资、客服工资、办公费等非订单直接成本</p></div><button className="btn primary" onClick={()=>open("expense")}>＋新增费用</button></div><div className="table-wrap"><table><thead><tr><th>日期</th><th>费用类型</th><th>金额</th><th>收款人</th><th>负责人</th><th>备注</th><th>操作</th></tr></thead><tbody>{db.expenses.map(e=><tr key={e.id}><td>{e.date}</td><td>{e.category}</td><td className="money-neg">{money(e.amount)}</td><td>{e.payee}</td><td>{e.owner}</td><td>{e.note}</td><td><button className="btn sm" onClick={()=>open("expense",e.id)}>编辑</button> <button className="btn sm danger" onClick={()=>remove("expenses",e.id)}>删除</button></td></tr>)}</tbody></table></div></section>}
-function crm(){return <section className="panel"><div className="panel-head"><div><h3>兼职CRM</h3><p className="sub">沉淀联系方式、项目历史、评级与二次转化标签</p></div><button className="btn primary" onClick={()=>open("contact")}>＋新增用户</button></div><div className="toolbar"><input className="search" placeholder="搜索姓名、电话、标签、项目…" value={query} onChange={e=>setQuery(e.target.value)}/></div><div className="table-wrap"><table><thead><tr><th>姓名</th><th>电话/微信</th><th>性别</th><th>城市</th><th>来源</th><th>做过项目</th><th>评级</th><th>标签</th><th>备注</th><th>操作</th></tr></thead><tbody>{filteredContacts.map(c=><tr key={c.id}><td>{c.name}</td><td>{c.phone||"—"}</td><td>{c.gender}</td><td>{c.city}</td><td>{c.source}</td><td>{c.projects}</td><td><span className={`tag ${c.rating==="A"?"a":"b"}`}>{c.rating}级</span></td><td>{c.tags.split(",").filter(Boolean).map(x=><span className="tag" key={x}>{x}</span>)}</td><td>{c.note||"—"}</td><td><button className="btn sm" onClick={()=>open("contact",c.id)}>编辑</button> <button className="btn sm danger" onClick={()=>remove("contacts",c.id)}>删除</button></td></tr>)}</tbody></table></div></section>}
-function team(){return <section className="panel"><div className="panel-head"><div><h3>团队转化管理</h3><p className="sub">记录分配流量、咨询、成交和利润贡献</p></div><button className="btn primary" onClick={()=>open("team")}>＋新增成员</button></div><div className="table-wrap"><table><thead><tr><th>成员</th><th>角色</th><th>分配流量</th><th>咨询</th><th>成交</th><th>咨询率</th><th>成交率</th><th>收入</th><th>成本</th><th>贡献利润</th><th>操作</th></tr></thead><tbody>{db.team.map(m=><tr key={m.id}><td>{m.name}</td><td>{m.role}</td><td>{m.leads}</td><td>{m.consultations}</td><td>{m.deals}</td><td>{pct(m.leads?m.consultations/m.leads*100:0)}</td><td>{pct(m.consultations?m.deals/m.consultations*100:0)}</td><td>{money(m.revenue)}</td><td>{money(m.cost)}</td><td className="money-pos">{money(m.revenue-m.cost)}</td><td><button className="btn sm" onClick={()=>open("team",m.id)}>编辑</button> <button className="btn sm danger" onClick={()=>remove("team",m.id)}>删除</button></td></tr>)}</tbody></table></div></section>}
-function projects(){return <section className="panel"><div className="panel-head"><div><h3>项目中心</h3><p className="sub">标准结算、工资口径与实际利润联动</p></div><button className="btn primary" onClick={()=>open("project")}>＋新增项目</button></div><div className="table-wrap"><table><thead><tr><th>项目</th><th>类型</th><th>参考结算</th><th>参考工资</th><th>订单数</th><th>实际收入</th><th>实际利润</th><th>利润率</th><th>状态</th><th>操作</th></tr></thead><tbody>{projectStats.map(p=><tr key={p.id}><td>{p.name}</td><td>{p.category}</td><td>{money(p.settlement)}</td><td>{money(p.wage)}</td><td>{p.orders}</td><td>{money(p.income)}</td><td className={p.profit>=0?"money-pos":"money-neg"}>{money(p.profit)}</td><td>{pct(p.income?p.profit/p.income*100:0)}</td><td><span className={`tag ${p.status==="进行中"?"a":"warn"}`}>{p.status}</span></td><td><button className="btn sm" onClick={()=>open("project",p.id)}>编辑</button> <button className="btn sm danger" onClick={()=>remove("projects",p.id)}>删除</button></td></tr>)}</tbody></table></div></section>}
-function reviews(){return <section className="panel"><div className="panel-head"><div><h3>每日经营复盘</h3><p className="sub">保存数据结果、问题判断和次日动作</p></div><button className="btn primary" onClick={()=>open("review")}>＋新增复盘</button></div>{[...db.reviews].sort((a,b)=>b.date.localeCompare(a.date)).map(r=><div className="review-card" key={r.id}><div className="panel-head"><div><h4>{r.date} 经营复盘</h4><div className="review-meta"><span>收入 {money(r.income)}</span><span>利润 {money(r.profit)}</span><span>流量成本 {money(r.trafficCost)}</span><span>新增微信 {r.wechat}</span><span>成交 {r.deals}</span></div></div><div><button className="btn sm" onClick={()=>open("review",r.id)}>编辑</button> <button className="btn sm danger" onClick={()=>remove("reviews",r.id)}>删除</button></div></div><div className="review-text"><div><b>最佳渠道/项目</b>{r.best}</div><div><b>主要问题</b>{r.problem}</div><div><b>明日调整</b>{r.plan}</div></div></div>)}</section>}
-function data(){return <div className="grid-2"><section className="panel"><h3>备份与迁移</h3><p className="sub">当前版本使用浏览器本地存储。建议每天或每周导出备份。</p><div className="actions" style={{marginTop:16}}><button className="btn primary" onClick={exportData}>导出全部数据</button><button className="btn" onClick={()=>importRef.current?.click()}>导入备份</button><input ref={importRef} type="file" accept=".json" hidden onChange={e=>e.target.files?.[0]&&importData(e.target.files[0])}/></div></section><section className="panel"><h3>初始化</h3><p className="sub">恢复历史数据会覆盖当前内容，请先导出备份。</p><button className="btn danger" style={{marginTop:16}} onClick={()=>{if(confirm("确定覆盖当前数据？"))setDb(seed)}}>恢复历史数据</button></section></div>}
-const title=navs.find(n=>n[0]===tab)?.[1]||"经营驾驶舱";return <div className="app"><aside className="sidebar"><div className="brand"><div className="brand-mark">良</div><div><h1>良辰运营中台</h1><small>FLOW OPERATIONS V4.2</small></div></div><div className="nav">{navs.map(([id,l,i])=><button key={id} className={tab===id?"active":""} onClick={()=>{setTab(id);setQuery("")}}><span>{i}</span>{l}</button>)}</div><div className="side-bottom"><div className="side-card">数据保存在当前浏览器<br/>刷新不会丢失<br/>换设备前请导出备份</div></div></aside><main className="main"><div className="topbar"><div className="title"><h2>{title}</h2><p>{new Date().toLocaleDateString("zh-CN",{year:"numeric",month:"long",day:"numeric",weekday:"long"})}</p></div><div className="actions"><button className="btn" onClick={exportData}>导出备份</button><button className="btn primary" onClick={()=>open("order")}>＋快速记一单</button></div></div>{tab==="dashboard"&&dashboard()}{tab==="orders"&&orders()}{tab==="traffic"&&traffic()}{tab==="expenses"&&expenses()}{tab==="crm"&&crm()}{tab==="team"&&team()}{tab==="projects"&&projects()}{tab==="reviews"&&reviews()}{tab==="data"&&data()}</main>{modal&&<Editor type={modal} id={editId} db={db} setDb={setDb} close={()=>{setModal(null);setEditId("")}}/>}</div>}
-function K({label,value,hint}:{label:string;value:string;hint:string}){return <div className="kpi"><div className="label">{label}</div><div className="value">{value}</div><div className="hint">{hint}</div></div>}
-function Field({label,children}:{label:string;children:ReactNode}){return <div className="field"><label>{label}</label>{children}</div>}
-function Editor({type,id,db,setDb,close}:{type:string;id:string;db:DB;setDb:Dispatch<SetStateAction<DB>>;close:()=>void}){const key=type==="order"?"orders":type==="traffic"?"traffic":type==="expense"?"expenses":type==="contact"?"contacts":type==="team"?"team":type==="project"?"projects":"reviews";const existing=(db[key] as any[]).find(x=>x.id===id);const [f,setF]=useState<any>(existing||defaults(type,db));const set=(k:string,v:any)=>setF((x:any)=>({...x,[k]:v}));function save(){setDb(prev=>{const arr=prev[key] as any[],item={...f,id:existing?.id||uid()};return{...prev,[key]:existing?arr.map(x=>x.id===existing.id?item:x):[item,...arr]}});close()}return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)close()}}><div className="modal"><div className="modal-head"><h3>{existing?"编辑":"新增"}记录</h3><button className="close" onClick={close}>×</button></div><div className="form-grid">{type==="order"&&<><Field label="日期"><input type="date" value={f.date} onChange={e=>set("date",e.target.value)}/></Field><Field label="项目"><input list="pl" value={f.project} onChange={e=>set("project",e.target.value)}/><datalist id="pl">{db.projects.map(p=><option key={p.id} value={p.name}/>)}</datalist></Field><Field label="兼职姓名"><input value={f.name} onChange={e=>set("name",e.target.value)}/></Field><Field label="电话/微信"><input value={f.phone} onChange={e=>set("phone",e.target.value)}/></Field><Field label="来源"><input value={f.source} onChange={e=>set("source",e.target.value)}/></Field><Field label="企业结算"><input type="number" value={f.income} onChange={e=>set("income",+e.target.value)}/></Field><Field label="直接工资"><input type="number" value={f.salary} onChange={e=>set("salary",+e.target.value)}/></Field><Field label="订单内其他成本"><input type="number" value={f.otherCost} onChange={e=>set("otherCost",+e.target.value)}/></Field><Field label="负责人"><input value={f.owner} onChange={e=>set("owner",e.target.value)}/></Field><Field label="状态"><select value={f.status} onChange={e=>set("status",e.target.value)}><option>已完成</option><option>待结算</option><option>已取消</option></select></Field><div className="field span-4"><label>备注</label><textarea value={f.note} onChange={e=>set("note",e.target.value)}/></div></>}{type==="traffic"&&<><Field label="日期"><input type="date" value={f.date} onChange={e=>set("date",e.target.value)}/></Field><Field label="渠道"><input value={f.channel} onChange={e=>set("channel",e.target.value)}/></Field>{["posts","views","messages","wechat","consultations","deals","cost","revenue"].map(k=><Field key={k} label={{posts:"发布数量",views:"曝光量",messages:"私信量",wechat:"新增微信",consultations:"有效咨询",deals:"成交量",cost:"流量成本",revenue:"对应收入"}[k]||k}><input type="number" value={f[k]} onChange={e=>set(k,+e.target.value)}/></Field>)}<div className="field span-4"><label>备注</label><textarea value={f.note} onChange={e=>set("note",e.target.value)}/></div></>}{type==="expense"&&<><Field label="日期"><input type="date" value={f.date} onChange={e=>set("date",e.target.value)}/></Field><Field label="费用类型"><input value={f.category} onChange={e=>set("category",e.target.value)}/></Field><Field label="金额"><input type="number" value={f.amount} onChange={e=>set("amount",+e.target.value)}/></Field><Field label="收款人"><input value={f.payee} onChange={e=>set("payee",e.target.value)}/></Field><Field label="负责人"><input value={f.owner} onChange={e=>set("owner",e.target.value)}/></Field><div className="field span-4"><label>备注</label><textarea value={f.note} onChange={e=>set("note",e.target.value)}/></div></>}{type==="contact"&&<><Field label="姓名"><input value={f.name} onChange={e=>set("name",e.target.value)}/></Field><Field label="电话/微信"><input value={f.phone} onChange={e=>set("phone",e.target.value)}/></Field><Field label="性别"><select value={f.gender} onChange={e=>set("gender",e.target.value)}><option>男</option><option>女</option><option>未知</option></select></Field><Field label="城市/学校"><input value={f.city} onChange={e=>set("city",e.target.value)}/></Field><Field label="来源"><input value={f.source} onChange={e=>set("source",e.target.value)}/></Field><Field label="评级"><select value={f.rating} onChange={e=>set("rating",e.target.value)}><option>A</option><option>B</option><option>C</option></select></Field><div className="field span-2"><label>做过项目</label><input value={f.projects} onChange={e=>set("projects",e.target.value)}/></div><div className="field span-2"><label>标签（逗号分隔）</label><input value={f.tags} onChange={e=>set("tags",e.target.value)}/></div><div className="field span-4"><label>备注</label><textarea value={f.note} onChange={e=>set("note",e.target.value)}/></div></>}{type==="team"&&<>{["name","role","leads","consultations","deals","revenue","cost"].map(k=><Field key={k} label={{name:"成员",role:"角色",leads:"分配流量",consultations:"咨询人数",deals:"成交人数",revenue:"贡献收入",cost:"成本/提成"}[k]||k}><input type={["leads","consultations","deals","revenue","cost"].includes(k)?"number":"text"} value={f[k]} onChange={e=>set(k,["leads","consultations","deals","revenue","cost"].includes(k)?+e.target.value:e.target.value)}/></Field>)}<div className="field span-4"><label>备注</label><textarea value={f.note} onChange={e=>set("note",e.target.value)}/></div></>}{type==="project"&&<><Field label="项目名称"><input value={f.name} onChange={e=>set("name",e.target.value)}/></Field><Field label="项目类型"><input value={f.category} onChange={e=>set("category",e.target.value)}/></Field><Field label="参考结算"><input type="number" value={f.settlement} onChange={e=>set("settlement",+e.target.value)}/></Field><Field label="参考工资"><input type="number" value={f.wage} onChange={e=>set("wage",+e.target.value)}/></Field><Field label="状态"><select value={f.status} onChange={e=>set("status",e.target.value)}><option>进行中</option><option>暂停</option><option>结束</option></select></Field><div className="field span-4"><label>备注</label><textarea value={f.note} onChange={e=>set("note",e.target.value)}/></div></>}{type==="review"&&<><Field label="日期"><input type="date" value={f.date} onChange={e=>set("date",e.target.value)}/></Field>{["income","profit","trafficCost","wechat","deals"].map(k=><Field key={k} label={{income:"今日收入",profit:"今日利润",trafficCost:"流量成本",wechat:"新增微信",deals:"成交人数"}[k]||k}><input type="number" value={f[k]} onChange={e=>set(k,+e.target.value)}/></Field>)}{[["best","今日最佳渠道/项目"],["problem","今日问题"],["plan","明日调整"]].map(([k,l])=><div className="field span-4" key={k}><label>{l}</label><textarea value={f[k]} onChange={e=>set(k,e.target.value)}/></div>)}</>}</div><div className="actions" style={{justifyContent:"flex-end",marginTop:18}}><button className="btn" onClick={close}>取消</button><button className="btn primary" onClick={save}>保存</button></div></div></div>}
-function defaults(type:string,db:DB){const d=new Date().toISOString().slice(0,10);if(type==="order")return{date:d,project:db.projects[0]?.name||"",name:"",phone:"",source:"",income:0,salary:0,trafficCost:0,otherCost:0,owner:"良辰",status:"已完成",note:""};if(type==="traffic")return{date:d,channel:"小红书代发",posts:0,views:0,messages:0,wechat:0,consultations:0,deals:0,cost:0,revenue:0,note:""};if(type==="expense")return{date:d,category:"员工工资",amount:0,payee:"",owner:"良辰",note:""};if(type==="contact")return{name:"",phone:"",gender:"未知",city:"长沙",source:"",projects:"",rating:"B",tags:"",note:""};if(type==="team")return{name:"",role:"转化成员",leads:0,consultations:0,deals:0,revenue:0,cost:0,note:""};if(type==="project")return{name:"",category:"",settlement:0,wage:0,status:"进行中",note:""};return{date:d,income:0,profit:0,trafficCost:0,wechat:0,deals:0,best:"",problem:"",plan:""}}
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
+
+type Order = {
+  id: string;
+  date: string;
+  project: string;
+  name: string;
+  phone: string;
+  source: string;
+  income: number;
+  salary: number;
+  otherCost: number;
+  owner: string;
+  status: "已完成" | "待结算" | "已取消";
+  note: string;
+};
+
+type Expense = {
+  id: string;
+  date: string;
+  category: string;
+  amount: number;
+  payee: string;
+  owner: string;
+  note: string;
+};
+
+type Contact = {
+  id: string;
+  name: string;
+  phone: string;
+  gender: "男" | "女" | "未知";
+  city: string;
+  source: string;
+  projects: string;
+  rating: "A" | "B" | "C";
+  tags: string;
+  note: string;
+};
+
+type Member = {
+  id: string;
+  name: string;
+  role: string;
+  note: string;
+};
+
+type Project = {
+  id: string;
+  name: string;
+  category: string;
+  settlement: number;
+  wage: number;
+  status: "进行中" | "暂停" | "结束";
+  note: string;
+};
+
+type Review = {
+  id: string;
+  date: string;
+  income: number;
+  profit: number;
+  batchCost: number;
+  wechat: number;
+  deals: number;
+  best: string;
+  problem: string;
+  plan: string;
+};
+
+type Batch = {
+  id: string;
+  date: string;
+  batchNo: string;
+  channel: string;
+  receiverWechat: string;
+  account1: string;
+  account2: string;
+  accountCount: number;
+  posts: number;
+  cost: number;
+  wechat: number;
+  consultations: number;
+  deals: number;
+  attributedProfit: number;
+  owner: string;
+  note: string;
+};
+
+type Conversion = {
+  id: string;
+  date: string;
+  member: string;
+  receiverWechat: string;
+  assignedWechat: number;
+  consultations: number;
+  deals: number;
+  revenue: number;
+  cost: number;
+  note: string;
+};
+
+type DB = {
+  orders: Order[];
+  expenses: Expense[];
+  contacts: Contact[];
+  members: Member[];
+  projects: Project[];
+  reviews: Review[];
+  batches: Batch[];
+  conversions: Conversion[];
+};
+
+type LegacyTraffic = {
+  id?: string;
+  date?: string;
+  channel?: string;
+  posts?: number;
+  wechat?: number;
+  consultations?: number;
+  deals?: number;
+  cost?: number;
+  revenue?: number;
+  note?: string;
+};
+
+const uid = () => `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+const today = () => new Date().toISOString().slice(0, 10);
+const money = (value: number) =>
+  `¥${Number(value || 0).toLocaleString("zh-CN", {
+    maximumFractionDigits: 2,
+  })}`;
+const percent = (value: number) =>
+  `${(Number.isFinite(value) ? value : 0).toFixed(1)}%`;
+
+const seed: DB = {
+  orders: [
+    {
+      id: "o1",
+      date: "2026-07-20",
+      project: "星沙直播",
+      name: "郑鑫、张东妹",
+      phone: "",
+      source: "自有名单",
+      income: 700,
+      salary: 350,
+      otherCost: 0,
+      owner: "良辰",
+      status: "已完成",
+      note: "两人合计，700-350=350",
+    },
+    {
+      id: "o2",
+      date: "2026-07-20",
+      project: "好评",
+      name: "刘鑫、尹润发",
+      phone: "",
+      source: "前天好评",
+      income: 280,
+      salary: 0,
+      otherCost: 0,
+      owner: "良辰",
+      status: "已完成",
+      note: "流量成本和哲立工资分别记录",
+    },
+    {
+      id: "o3",
+      date: "2026-07-21",
+      project: "好评",
+      name: "龙韬、张紫怡、李楠锋、陈思晴、李雨杰等",
+      phone: "已脱敏",
+      source: "昨日名单",
+      income: 1080,
+      salary: 0,
+      otherCost: 0,
+      owner: "良辰",
+      status: "已完成",
+      note: "6个人，一个是代理的",
+    },
+    {
+      id: "o4",
+      date: "2026-07-21",
+      project: "星沙直播",
+      name: "尹颢竣",
+      phone: "",
+      source: "自有流量",
+      income: 350,
+      salary: 150,
+      otherCost: 0,
+      owner: "良辰",
+      status: "已完成",
+      note: "350-150=200",
+    },
+    {
+      id: "o5",
+      date: "2026-07-21",
+      project: "土桥APP",
+      name: "王宝莹、李俊奇",
+      phone: "",
+      source: "自有流量",
+      income: 234,
+      salary: 0,
+      otherCost: 0,
+      owner: "良辰",
+      status: "已完成",
+      note: "",
+    },
+    {
+      id: "o6",
+      date: "2026-07-21",
+      project: "星沙APP",
+      name: "刘鑫",
+      phone: "",
+      source: "自有流量",
+      income: 169,
+      salary: 0,
+      otherCost: 0,
+      owner: "良辰",
+      status: "已完成",
+      note: "130×1.3=169",
+    },
+    {
+      id: "o7",
+      date: "2026-07-21",
+      project: "小红书账号",
+      name: "账号交易",
+      phone: "",
+      source: "小红书",
+      income: 40,
+      salary: 0,
+      otherCost: 0,
+      owner: "良辰",
+      status: "已完成",
+      note: "出了一个账号40",
+    },
+    {
+      id: "o8",
+      date: "2026-07-21",
+      project: "证券",
+      name: "杨洲权等多人",
+      phone: "",
+      source: "自有/合作代理",
+      income: 480,
+      salary: 0,
+      otherCost: 0,
+      owner: "良辰",
+      status: "已完成",
+      note: "按原始净收入公式记录",
+    },
+    {
+      id: "o9",
+      date: "2026-07-22",
+      project: "岳麓APP",
+      name: "陈思晴、陈慧妮",
+      phone: "已脱敏",
+      source: "自有流量",
+      income: 273,
+      salary: 0,
+      otherCost: 0,
+      owner: "良辰",
+      status: "已完成",
+      note: "210×1.3=273",
+    },
+    {
+      id: "o10",
+      date: "2026-07-22",
+      project: "土桥",
+      name: "莫琨",
+      phone: "",
+      source: "自有流量",
+      income: 195,
+      salary: 0,
+      otherCost: 0,
+      owner: "良辰",
+      status: "已完成",
+      note: "150×1.3=195",
+    },
+    {
+      id: "o11",
+      date: "2026-07-22",
+      project: "证券",
+      name: "韦德华、唐慧",
+      phone: "",
+      source: "自有流量",
+      income: 170,
+      salary: 0,
+      otherCost: 0,
+      owner: "良辰",
+      status: "已完成",
+      note: "130+40=170",
+    },
+    {
+      id: "o12",
+      date: "2026-07-23",
+      project: "线上网店",
+      name: "陈思晴",
+      phone: "已脱敏",
+      source: "复购用户",
+      income: 260,
+      salary: 100,
+      otherCost: 0,
+      owner: "良辰",
+      status: "已完成",
+      note: "260-100=160",
+    },
+  ],
+  expenses: [
+    {
+      id: "e1",
+      date: "2026-07-20",
+      category: "员工工资",
+      amount: 100,
+      payee: "哲立",
+      owner: "良辰",
+      note: "7.20哲立工资",
+    },
+    {
+      id: "e2",
+      date: "2026-07-21",
+      category: "员工工资",
+      amount: 268,
+      payee: "哲立",
+      owner: "良辰",
+      note: "7.21哲立工资",
+    },
+    {
+      id: "e3",
+      date: "2026-07-22",
+      category: "员工工资",
+      amount: 160,
+      payee: "哲立",
+      owner: "良辰",
+      note: "7.22哲立工资",
+    },
+  ],
+  contacts: [
+    {
+      id: "c1",
+      name: "陈思晴",
+      phone: "已脱敏",
+      gender: "女",
+      city: "长沙",
+      source: "好评名单",
+      projects: "好评、岳麓APP、线上网店",
+      rating: "A",
+      tags: "高复购,执行稳定",
+      note: "连续合作3次",
+    },
+    {
+      id: "c2",
+      name: "刘鑫",
+      phone: "",
+      gender: "未知",
+      city: "长沙",
+      source: "自有名单",
+      projects: "好评、星沙APP",
+      rating: "A",
+      tags: "多项目",
+      note: "",
+    },
+  ],
+  members: [
+    { id: "m1", name: "良辰", role: "管理员", note: "主账号承接" },
+    { id: "m2", name: "哲立", role: "核心徒弟", note: "主要转化成员" },
+    { id: "m3", name: "徒弟B", role: "转化成员", note: "持续统计" },
+  ],
+  projects: [
+    {
+      id: "p1",
+      name: "证券",
+      category: "拉新",
+      settlement: 130,
+      wage: 40,
+      status: "进行中",
+      note: "不同卡类费用不同",
+    },
+    {
+      id: "p2",
+      name: "星沙直播",
+      category: "直播充场",
+      settlement: 350,
+      wage: 150,
+      status: "进行中",
+      note: "",
+    },
+    {
+      id: "p3",
+      name: "好评",
+      category: "线下任务",
+      settlement: 180,
+      wage: 0,
+      status: "进行中",
+      note: "按批次结算",
+    },
+    {
+      id: "p4",
+      name: "岳麓APP",
+      category: "APP拉新",
+      settlement: 136.5,
+      wage: 0,
+      status: "进行中",
+      note: "按1.3系数结算",
+    },
+    {
+      id: "p5",
+      name: "线上网店",
+      category: "线上任务",
+      settlement: 260,
+      wage: 100,
+      status: "进行中",
+      note: "",
+    },
+  ],
+  reviews: [
+    {
+      id: "r1",
+      date: "2026-07-20",
+      income: 980,
+      profit: 404,
+      batchCost: 126,
+      wechat: 35,
+      deals: 4,
+      best: "星沙直播和好评同时贡献",
+      problem: "证券费用延迟结算，利润口径不完整",
+      plan: "补齐待结算项目，分开记录收入与成本",
+    },
+    {
+      id: "r2",
+      date: "2026-07-21",
+      income: 2353,
+      profit: 1795,
+      batchCost: 140,
+      wechat: 46,
+      deals: 13,
+      best: "好评、证券、APP多项目并行",
+      problem: "名单来源和项目成本分摊不够细",
+      plan: "开始记录批次、承接微信和负责人",
+    },
+    {
+      id: "r3",
+      date: "2026-07-22",
+      income: 638,
+      profit: 388,
+      batchCost: 90,
+      wechat: 28,
+      deals: 5,
+      best: "岳麓APP与土桥保持正利润",
+      problem: "证券利润偏低",
+      plan: "复核成本并设置最低利润线",
+    },
+    {
+      id: "r4",
+      date: "2026-07-23",
+      income: 260,
+      profit: 160,
+      batchCost: 0,
+      wechat: 1,
+      deals: 1,
+      best: "老用户复购，无新增获客成本",
+      problem: "当日订单量偏少",
+      plan: "扩大抖音男性流量测试，召回A级兼职",
+    },
+  ],
+  batches: [
+    {
+      id: "b1",
+      date: "2026-07-20",
+      batchNo: "0720-A",
+      channel: "小红书双号代发",
+      receiverWechat: "良辰微信",
+      account1: "历史账号A",
+      account2: "历史账号B",
+      accountCount: 2,
+      posts: 16,
+      cost: 126,
+      wechat: 35,
+      consultations: 24,
+      deals: 4,
+      attributedProfit: 404,
+      owner: "良辰",
+      note: "由历史流量数据迁移",
+    },
+    {
+      id: "b2",
+      date: "2026-07-21",
+      batchNo: "0721-A",
+      channel: "小红书双号代发",
+      receiverWechat: "良辰微信",
+      account1: "历史账号A",
+      account2: "历史账号B",
+      accountCount: 2,
+      posts: 18,
+      cost: 140,
+      wechat: 46,
+      consultations: 31,
+      deals: 13,
+      attributedProfit: 1795,
+      owner: "良辰",
+      note: "由历史流量数据迁移",
+    },
+    {
+      id: "b3",
+      date: "2026-07-22",
+      batchNo: "0722-A",
+      channel: "小红书双号代发",
+      receiverWechat: "良辰微信",
+      account1: "历史账号A",
+      account2: "历史账号B",
+      accountCount: 2,
+      posts: 12,
+      cost: 90,
+      wechat: 28,
+      consultations: 18,
+      deals: 5,
+      attributedProfit: 388,
+      owner: "良辰",
+      note: "由历史流量数据迁移",
+    },
+    {
+      id: "b4",
+      date: "2026-07-23",
+      batchNo: "0723-R",
+      channel: "自然复购",
+      receiverWechat: "良辰微信",
+      account1: "",
+      account2: "",
+      accountCount: 0,
+      posts: 0,
+      cost: 0,
+      wechat: 1,
+      consultations: 1,
+      deals: 1,
+      attributedProfit: 160,
+      owner: "良辰",
+      note: "陈思晴复购",
+    },
+  ],
+  conversions: [],
+};
+
+function normalizeDB(raw: unknown): DB {
+  if (!raw || typeof raw !== "object") return seed;
+  const source = raw as Record<string, unknown>;
+  const legacyTraffic = Array.isArray(source.traffic)
+    ? (source.traffic as LegacyTraffic[])
+    : [];
+
+  const migratedBatches: Batch[] = legacyTraffic.map((item, index) => ({
+    id: item.id || `legacy_batch_${index}`,
+    date: item.date || today(),
+    batchNo: `历史-${item.date || index + 1}`,
+    channel: item.channel || "历史流量",
+    receiverWechat: "未记录",
+    account1: "",
+    account2: "",
+    accountCount:
+      (item.channel || "").includes("小红书") && Number(item.posts || 0) > 0
+        ? 2
+        : 0,
+    posts: Number(item.posts || 0),
+    cost: Number(item.cost || 0),
+    wechat: Number(item.wechat || 0),
+    consultations: Number(item.consultations || 0),
+    deals: Number(item.deals || 0),
+    attributedProfit: Math.max(
+      0,
+      Number(item.revenue || 0) - Number(item.cost || 0),
+    ),
+    owner: "良辰",
+    note: item.note || "由旧版流量中心自动迁移",
+  }));
+
+  const oldTeam = Array.isArray(source.team)
+    ? (source.team as Array<Record<string, unknown>>)
+    : [];
+
+  const members: Member[] =
+    Array.isArray(source.members) && source.members.length > 0
+      ? (source.members as Member[])
+      : oldTeam.length > 0
+        ? oldTeam.map((item, index) => ({
+            id: String(item.id || `legacy_member_${index}`),
+            name: String(item.name || `成员${index + 1}`),
+            role: String(item.role || "转化成员"),
+            note: String(item.note || ""),
+          }))
+        : seed.members;
+
+  return {
+    orders: Array.isArray(source.orders)
+      ? (source.orders as Order[]).map((item) => ({
+          ...item,
+          otherCost: Number(item.otherCost || 0),
+        }))
+      : seed.orders,
+    expenses: Array.isArray(source.expenses)
+      ? (source.expenses as Expense[])
+      : seed.expenses,
+    contacts: Array.isArray(source.contacts)
+      ? (source.contacts as Contact[])
+      : seed.contacts,
+    members,
+    projects: Array.isArray(source.projects)
+      ? (source.projects as Project[])
+      : seed.projects,
+    reviews: Array.isArray(source.reviews)
+      ? (source.reviews as Review[]).map((item) => ({
+          ...item,
+          batchCost: Number(
+            item.batchCost ??
+              (item as unknown as Record<string, unknown>).trafficCost ??
+              0,
+          ),
+        }))
+      : seed.reviews,
+    batches:
+      Array.isArray(source.batches) && source.batches.length > 0
+        ? (source.batches as Batch[])
+        : migratedBatches.length > 0
+          ? migratedBatches
+          : seed.batches,
+    conversions: Array.isArray(source.conversions)
+      ? (source.conversions as Conversion[])
+      : [],
+  };
+}
+
+const navItems = [
+  ["dashboard", "经营驾驶舱", "◫"],
+  ["batches", "投放批次", "↗"],
+  ["conversions", "承接转化", "⇄"],
+  ["orders", "订单利润", "¥"],
+  ["expenses", "费用中心", "￥"],
+  ["crm", "兼职CRM", "◎"],
+  ["members", "成员管理", "♟"],
+  ["projects", "项目中心", "◆"],
+  ["reviews", "每日复盘", "✓"],
+  ["data", "数据管理", "⇩"],
+] as const;
+
+export default function Home() {
+  const [db, setDb] = useState<DB>(seed);
+  const [ready, setReady] = useState(false);
+  const [tab, setTab] = useState<(typeof navItems)[number][0]>("dashboard");
+  const [modal, setModal] = useState<string | null>(null);
+  const [editId, setEditId] = useState("");
+  const [query, setQuery] = useState("");
+  const [analysisDate, setAnalysisDate] = useState(today());
+  const importRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("liangchen_v42");
+    if (raw) {
+      try {
+        const parsed = normalizeDB(JSON.parse(raw));
+        setDb(parsed);
+        const latestDate = [
+          ...parsed.batches.map((item) => item.date),
+          ...parsed.conversions.map((item) => item.date),
+        ]
+          .filter(Boolean)
+          .sort()
+          .at(-1);
+        if (latestDate) setAnalysisDate(latestDate);
+      } catch {
+        setDb(seed);
+      }
+    }
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (ready) {
+      localStorage.setItem("liangchen_v42", JSON.stringify(db));
+    }
+  }, [db, ready]);
+
+  const orderProfit = (order: Order) =>
+    order.income - order.salary - order.otherCost;
+
+  const totals = useMemo(() => {
+    const activeOrders = db.orders.filter((item) => item.status !== "已取消");
+    const income = activeOrders.reduce((sum, item) => sum + item.income, 0);
+    const directCost = activeOrders.reduce(
+      (sum, item) => sum + item.salary + item.otherCost,
+      0,
+    );
+    const batchCost = db.batches.reduce((sum, item) => sum + item.cost, 0);
+    const expenses = db.expenses.reduce((sum, item) => sum + item.amount, 0);
+    const profit = income - directCost - batchCost - expenses;
+    const wechat = db.batches.reduce((sum, item) => sum + item.wechat, 0);
+    const consultations = db.batches.reduce(
+      (sum, item) => sum + item.consultations,
+      0,
+    );
+    const deals = db.batches.reduce((sum, item) => sum + item.deals, 0);
+
+    return {
+      income,
+      directCost,
+      batchCost,
+      expenses,
+      profit,
+      wechat,
+      consultations,
+      deals,
+      cac: wechat ? batchCost / wechat : 0,
+      overallRate: wechat ? (deals / wechat) * 100 : 0,
+      roi: batchCost ? profit / batchCost : 0,
+    };
+  }, [db]);
+
+  const batchStats = useMemo(
+    () =>
+      [...db.batches]
+        .map((item) => ({
+          ...item,
+          cac: item.wechat ? item.cost / item.wechat : 0,
+          consultationRate: item.wechat
+            ? (item.consultations / item.wechat) * 100
+            : 0,
+          consultationDealRate: item.consultations
+            ? (item.deals / item.consultations) * 100
+            : 0,
+          overallRate: item.wechat ? (item.deals / item.wechat) * 100 : 0,
+          dealCost: item.deals ? item.cost / item.deals : 0,
+          perWechatProfit: item.wechat
+            ? item.attributedProfit / item.wechat
+            : 0,
+          roi: item.cost ? item.attributedProfit / item.cost : 0,
+        }))
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [db.batches],
+  );
+
+  const conversionStats = useMemo(
+    () =>
+      db.conversions.map((item) => {
+        const profit = item.revenue - item.cost;
+        return {
+          ...item,
+          profit,
+          consultationRate: item.assignedWechat
+            ? (item.consultations / item.assignedWechat) * 100
+            : 0,
+          consultationDealRate: item.consultations
+            ? (item.deals / item.consultations) * 100
+            : 0,
+          overallRate: item.assignedWechat
+            ? (item.deals / item.assignedWechat) * 100
+            : 0,
+          perWechatProfit: item.assignedWechat
+            ? profit / item.assignedWechat
+            : 0,
+        };
+      }),
+    [db.conversions],
+  );
+
+  const dailyConversionRows = useMemo(
+    () => conversionStats.filter((item) => item.date === analysisDate),
+    [conversionStats, analysisDate],
+  );
+
+  const dailyRanking = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        member: string;
+        assignedWechat: number;
+        consultations: number;
+        deals: number;
+        revenue: number;
+        cost: number;
+      }
+    >();
+
+    dailyConversionRows.forEach((item) => {
+      const current = map.get(item.member) || {
+        member: item.member,
+        assignedWechat: 0,
+        consultations: 0,
+        deals: 0,
+        revenue: 0,
+        cost: 0,
+      };
+      current.assignedWechat += item.assignedWechat;
+      current.consultations += item.consultations;
+      current.deals += item.deals;
+      current.revenue += item.revenue;
+      current.cost += item.cost;
+      map.set(item.member, current);
+    });
+
+    return [...map.values()]
+      .map((item) => {
+        const profit = item.revenue - item.cost;
+        return {
+          ...item,
+          profit,
+          consultationRate: item.assignedWechat
+            ? (item.consultations / item.assignedWechat) * 100
+            : 0,
+          consultationDealRate: item.consultations
+            ? (item.deals / item.consultations) * 100
+            : 0,
+          overallRate: item.assignedWechat
+            ? (item.deals / item.assignedWechat) * 100
+            : 0,
+          perWechatProfit: item.assignedWechat
+            ? profit / item.assignedWechat
+            : 0,
+        };
+      })
+      .sort((a, b) => b.profit - a.profit);
+  }, [dailyConversionRows]);
+
+  const projectStats = useMemo(
+    () =>
+      db.projects.map((project) => {
+        const orders = db.orders.filter(
+          (order) =>
+            order.project === project.name && order.status !== "已取消",
+        );
+        return {
+          ...project,
+          orders: orders.length,
+          income: orders.reduce((sum, item) => sum + item.income, 0),
+          profit: orders.reduce((sum, item) => sum + orderProfit(item), 0),
+        };
+      }),
+    [db.projects, db.orders],
+  );
+
+  const dailyProfit = useMemo(() => {
+    const map: Record<string, number> = {};
+
+    db.orders.forEach((order) => {
+      if (order.status === "已取消") return;
+      map[order.date] = (map[order.date] || 0) + orderProfit(order);
+    });
+    db.batches.forEach((batch) => {
+      map[batch.date] = (map[batch.date] || 0) - batch.cost;
+    });
+    db.expenses.forEach((expense) => {
+      map[expense.date] = (map[expense.date] || 0) - expense.amount;
+    });
+
+    return Object.entries(map).sort().slice(-7);
+  }, [db]);
+
+  const filteredOrders = db.orders.filter((item) =>
+    [
+      item.name,
+      item.phone,
+      item.project,
+      item.source,
+      item.owner,
+      item.note,
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(query.toLowerCase()),
+  );
+
+  const filteredContacts = db.contacts.filter((item) =>
+    [item.name, item.phone, item.projects, item.tags, item.source]
+      .join(" ")
+      .toLowerCase()
+      .includes(query.toLowerCase()),
+  );
+
+  function open(type: string, id = "") {
+    setModal(type);
+    setEditId(id);
+  }
+
+  function remove(key: keyof DB, id: string) {
+    if (!confirm("确认删除这条记录？")) return;
+    setDb((previous) => ({
+      ...previous,
+      [key]: (previous[key] as Array<{ id: string }>).filter(
+        (item) => item.id !== id,
+      ),
+    }));
+  }
+
+  function exportData() {
+    const blob = new Blob([JSON.stringify(db, null, 2)], {
+      type: "application/json",
+    });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `良辰运营中台备份_${today()}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  function importData(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = normalizeDB(JSON.parse(String(reader.result)));
+        setDb(parsed);
+        alert("导入成功");
+      } catch {
+        alert("文件格式错误");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function renderDashboard() {
+    const maxProfit = Math.max(...dailyProfit.map(([, value]) => value), 1);
+    const bestBatch = [...batchStats].sort((a, b) => b.roi - a.roi)[0];
+    const bestProject = [...projectStats].sort(
+      (a, b) => b.profit - a.profit,
+    )[0];
+    const bestMember = [...conversionStats].sort(
+      (a, b) => b.perWechatProfit - a.perWechatProfit,
+    )[0];
+
+    return (
+      <>
+        <div className="kpis">
+          <Kpi label="累计收入" value={money(totals.income)} hint={`${db.orders.length}条订单`} />
+          <Kpi
+            label="累计净利润"
+            value={money(totals.profit)}
+            hint={`净利率 ${percent(
+              totals.income ? (totals.profit / totals.income) * 100 : 0,
+            )}`}
+          />
+          <Kpi
+            label="投放成本"
+            value={money(totals.batchCost)}
+            hint={`${db.batches.length}个批次`}
+          />
+          <Kpi
+            label="新增微信"
+            value={String(totals.wechat)}
+            hint={`单微信 ${money(totals.cac)}`}
+          />
+          <Kpi
+            label="整体转化率"
+            value={percent(totals.overallRate)}
+            hint={`${totals.deals}个成交`}
+          />
+          <Kpi
+            label="综合ROI"
+            value={totals.roi.toFixed(2)}
+            hint="净利润 ÷ 投放成本"
+          />
+        </div>
+
+        <div className="grid-2">
+          <section className="panel">
+            <div className="panel-head">
+              <div>
+                <h3>近7日净利润趋势</h3>
+                <p className="sub">自动扣除投放成本和日常费用</p>
+              </div>
+            </div>
+            <div className="mini-chart">
+              {dailyProfit.map(([date, value]) => (
+                <div className="bar-wrap" key={date}>
+                  <div
+                    className="bar profit"
+                    style={{
+                      height: `${Math.max(
+                        7,
+                        Math.max(0, value) / maxProfit * 150,
+                      )}px`,
+                    }}
+                  >
+                    <span>{value}</span>
+                  </div>
+                  <div className="bar-label">{date.slice(5)}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="panel">
+            <div className="panel-head">
+              <div>
+                <h3>经营结论</h3>
+                <p className="sub">根据当前数据自动判断</p>
+              </div>
+            </div>
+            <div className="metric-list">
+              <Metric label="最高ROI批次" value={bestBatch ? `${bestBatch.batchNo} · ${bestBatch.roi.toFixed(2)}` : "暂无"} />
+              <Metric label="最高利润项目" value={bestProject ? `${bestProject.name} · ${money(bestProject.profit)}` : "暂无"} />
+              <Metric label="单微信价值最高" value={bestMember ? `${bestMember.member} · ${money(bestMember.perWechatProfit)}` : "待录入承接数据"} />
+              <Metric label="A级兼职" value={`${db.contacts.filter((item) => item.rating === "A").length}人`} />
+            </div>
+          </section>
+        </div>
+
+        <div className="grid-3">
+          <section className="panel">
+            <h3>成本结构</h3>
+            <div className="metric-list section-gap">
+              <Metric label="直接工资/成本" value={money(totals.directCost)} />
+              <Metric label="投放成本" value={money(totals.batchCost)} />
+              <Metric label="运营费用" value={money(totals.expenses)} />
+            </div>
+          </section>
+
+          <section className="panel">
+            <h3>投放效率</h3>
+            <div className="metric-list section-gap">
+              <Metric label="有效咨询率" value={percent(totals.wechat ? totals.consultations / totals.wechat * 100 : 0)} />
+              <Metric label="整体转化率" value={percent(totals.overallRate)} />
+              <Metric label="单成交成本" value={money(totals.deals ? totals.batchCost / totals.deals : 0)} />
+            </div>
+          </section>
+
+          <section className="panel">
+            <h3>系统提醒</h3>
+            <div className="notice section-gap">
+              {db.conversions.length === 0
+                ? "投放数据已具备。下一步录入每名成员每天承接的微信、咨询和成交，系统即可比较转化效率。"
+                : dailyRanking.length === 0
+                  ? `当前选择的 ${analysisDate} 暂无承接转化记录。`
+                  : `当前 ${analysisDate} 单微信利润最高的是 ${[...dailyRanking].sort((a, b) => b.perWechatProfit - a.perWechatProfit)[0]?.member}。`}
+            </div>
+          </section>
+        </div>
+      </>
+    );
+  }
+
+  function renderBatches() {
+    return (
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h3>投放批次中心</h3>
+            <p className="sub">
+              最小统计单位：一个承接微信 + 一组代发账号 + 当天实际新增与成交
+            </p>
+          </div>
+          <button className="btn primary" onClick={() => open("batch")}>
+            ＋新增批次
+          </button>
+        </div>
+
+        <div className="summary-strip">
+          <Summary label="累计批次" value={`${db.batches.length}个`} />
+          <Summary label="投放成本" value={money(totals.batchCost)} />
+          <Summary label="新增微信" value={`${totals.wechat}人`} />
+          <Summary label="单微信成本" value={money(totals.cac)} />
+          <Summary label="整体转化率" value={percent(totals.overallRate)} />
+        </div>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>批次</th>
+                <th>方式</th>
+                <th>承接微信</th>
+                <th>账号组合</th>
+                <th>帖子</th>
+                <th>成本</th>
+                <th>新增微信</th>
+                <th>咨询率</th>
+                <th>成交</th>
+                <th>整体转化率</th>
+                <th>单微信成本</th>
+                <th>单微信利润</th>
+                <th>ROI</th>
+                <th>负责人</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {batchStats.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.date}</td>
+                  <td>{item.batchNo}</td>
+                  <td>{item.channel}</td>
+                  <td>{item.receiverWechat}</td>
+                  <td>
+                    {[item.account1, item.account2].filter(Boolean).join(" + ") ||
+                      "—"}
+                  </td>
+                  <td>{item.posts}</td>
+                  <td>{money(item.cost)}</td>
+                  <td>{item.wechat}</td>
+                  <td>{percent(item.consultationRate)}</td>
+                  <td>{item.deals}</td>
+                  <td>{percent(item.overallRate)}</td>
+                  <td>{money(item.cac)}</td>
+                  <td>{money(item.perWechatProfit)}</td>
+                  <td className={item.roi >= 0 ? "money-pos" : "money-neg"}>
+                    {item.roi.toFixed(2)}
+                  </td>
+                  <td>{item.owner}</td>
+                  <td>
+                    <button
+                      className="btn sm"
+                      onClick={() => open("batch", item.id)}
+                    >
+                      编辑
+                    </button>{" "}
+                    <button
+                      className="btn sm danger"
+                      onClick={() => remove("batches", item.id)}
+                    >
+                      删除
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  function renderConversions() {
+    const totalAssigned = dailyRanking.reduce(
+      (sum, item) => sum + item.assignedWechat,
+      0,
+    );
+    const totalConsultations = dailyRanking.reduce(
+      (sum, item) => sum + item.consultations,
+      0,
+    );
+    const totalDeals = dailyRanking.reduce((sum, item) => sum + item.deals, 0);
+    const totalProfit = dailyRanking.reduce((sum, item) => sum + item.profit, 0);
+
+    return (
+      <>
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h3>承接转化中心</h3>
+              <p className="sub">
+                按日期和负责人比较：咨询率、成交率、单微信利润和当日贡献利润
+              </p>
+            </div>
+            <button className="btn primary" onClick={() => open("conversion")}>
+              ＋新增承接记录
+            </button>
+          </div>
+
+          <div className="date-filter">
+            <label>查看日期</label>
+            <input
+              type="date"
+              value={analysisDate}
+              onChange={(event) => setAnalysisDate(event.target.value)}
+            />
+          </div>
+
+          <div className="summary-strip">
+            <Summary label="当日分配微信" value={`${totalAssigned}人`} />
+            <Summary
+              label="有效咨询率"
+              value={percent(
+                totalAssigned ? totalConsultations / totalAssigned * 100 : 0,
+              )}
+            />
+            <Summary
+              label="整体转化率"
+              value={percent(totalAssigned ? totalDeals / totalAssigned * 100 : 0)}
+            />
+            <Summary label="当日成交" value={`${totalDeals}人`} />
+            <Summary label="当日贡献利润" value={money(totalProfit)} />
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h3>{analysisDate} 团队效率排行榜</h3>
+              <p className="sub">
+                不设置模糊总分，直接比较真实经营指标
+              </p>
+            </div>
+          </div>
+
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>排名</th>
+                  <th>负责人</th>
+                  <th>分配微信</th>
+                  <th>有效咨询</th>
+                  <th>咨询率</th>
+                  <th>成交</th>
+                  <th>咨询成交率</th>
+                  <th>整体转化率</th>
+                  <th>归因收入</th>
+                  <th>成本</th>
+                  <th>贡献利润</th>
+                  <th>单微信利润</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dailyRanking.length === 0 ? (
+                  <tr>
+                    <td colSpan={12}>
+                      <div className="empty">
+                        这一天还没有承接记录。点击“新增承接记录”开始统计。
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  dailyRanking.map((item, index) => (
+                    <tr key={item.member}>
+                      <td>
+                        <span className={`rank rank-${index + 1}`}>
+                          {index + 1}
+                        </span>
+                      </td>
+                      <td>
+                        <strong>{item.member}</strong>
+                      </td>
+                      <td>{item.assignedWechat}</td>
+                      <td>{item.consultations}</td>
+                      <td>{percent(item.consultationRate)}</td>
+                      <td>{item.deals}</td>
+                      <td>{percent(item.consultationDealRate)}</td>
+                      <td>{percent(item.overallRate)}</td>
+                      <td>{money(item.revenue)}</td>
+                      <td>{money(item.cost)}</td>
+                      <td
+                        className={
+                          item.profit >= 0 ? "money-pos" : "money-neg"
+                        }
+                      >
+                        {money(item.profit)}
+                      </td>
+                      <td>{money(item.perWechatProfit)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <h3>承接明细</h3>
+              <p className="sub">
+                同一负责人同一天可录入多个微信或多个批次
+              </p>
+            </div>
+          </div>
+
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>日期</th>
+                  <th>负责人</th>
+                  <th>承接微信</th>
+                  <th>分配微信</th>
+                  <th>咨询</th>
+                  <th>成交</th>
+                  <th>整体转化率</th>
+                  <th>收入</th>
+                  <th>成本</th>
+                  <th>利润</th>
+                  <th>单微信利润</th>
+                  <th>备注</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...conversionStats]
+                  .sort((a, b) => b.date.localeCompare(a.date))
+                  .map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.date}</td>
+                      <td>{item.member}</td>
+                      <td>{item.receiverWechat}</td>
+                      <td>{item.assignedWechat}</td>
+                      <td>{item.consultations}</td>
+                      <td>{item.deals}</td>
+                      <td>{percent(item.overallRate)}</td>
+                      <td>{money(item.revenue)}</td>
+                      <td>{money(item.cost)}</td>
+                      <td
+                        className={
+                          item.profit >= 0 ? "money-pos" : "money-neg"
+                        }
+                      >
+                        {money(item.profit)}
+                      </td>
+                      <td>{money(item.perWechatProfit)}</td>
+                      <td>{item.note || "—"}</td>
+                      <td>
+                        <button
+                          className="btn sm"
+                          onClick={() => open("conversion", item.id)}
+                        >
+                          编辑
+                        </button>{" "}
+                        <button
+                          className="btn sm danger"
+                          onClick={() => remove("conversions", item.id)}
+                        >
+                          删除
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  function renderOrders() {
+    return (
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h3>订单利润中心</h3>
+            <p className="sub">
+              订单利润只扣直接工资和其他直接成本；投放成本在批次中心统一记录
+            </p>
+          </div>
+          <button className="btn primary" onClick={() => open("order")}>
+            ＋新增订单
+          </button>
+        </div>
+        <div className="toolbar">
+          <input
+            className="search"
+            placeholder="搜索姓名、电话、项目、来源…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>项目</th>
+                <th>人员</th>
+                <th>联系方式</th>
+                <th>来源</th>
+                <th>收入</th>
+                <th>直接工资</th>
+                <th>其他成本</th>
+                <th>订单利润</th>
+                <th>负责人</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredOrders.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.date}</td>
+                  <td>{item.project}</td>
+                  <td>{item.name}</td>
+                  <td>{item.phone || "—"}</td>
+                  <td>{item.source || "—"}</td>
+                  <td>{money(item.income)}</td>
+                  <td>{money(item.salary)}</td>
+                  <td>{money(item.otherCost)}</td>
+                  <td
+                    className={
+                      orderProfit(item) >= 0 ? "money-pos" : "money-neg"
+                    }
+                  >
+                    {money(orderProfit(item))}
+                  </td>
+                  <td>{item.owner}</td>
+                  <td>
+                    <span
+                      className={`tag ${
+                        item.status === "待结算" ? "warn" : "a"
+                      }`}
+                    >
+                      {item.status}
+                    </span>
+                  </td>
+                  <td>
+                    <button
+                      className="btn sm"
+                      onClick={() => open("order", item.id)}
+                    >
+                      编辑
+                    </button>{" "}
+                    <button
+                      className="btn sm danger"
+                      onClick={() => remove("orders", item.id)}
+                    >
+                      删除
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  function renderExpenses() {
+    return (
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h3>费用中心</h3>
+            <p className="sub">员工工资、客服工资、办公费等非订单直接成本</p>
+          </div>
+          <button className="btn primary" onClick={() => open("expense")}>
+            ＋新增费用
+          </button>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>费用类型</th>
+                <th>金额</th>
+                <th>收款人</th>
+                <th>负责人</th>
+                <th>备注</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {db.expenses.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.date}</td>
+                  <td>{item.category}</td>
+                  <td className="money-neg">{money(item.amount)}</td>
+                  <td>{item.payee}</td>
+                  <td>{item.owner}</td>
+                  <td>{item.note}</td>
+                  <td>
+                    <button
+                      className="btn sm"
+                      onClick={() => open("expense", item.id)}
+                    >
+                      编辑
+                    </button>{" "}
+                    <button
+                      className="btn sm danger"
+                      onClick={() => remove("expenses", item.id)}
+                    >
+                      删除
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  function renderCRM() {
+    return (
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h3>兼职CRM</h3>
+            <p className="sub">联系方式、历史项目、评级和二次转化标签</p>
+          </div>
+          <button className="btn primary" onClick={() => open("contact")}>
+            ＋新增用户
+          </button>
+        </div>
+        <div className="toolbar">
+          <input
+            className="search"
+            placeholder="搜索姓名、电话、标签、项目…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>姓名</th>
+                <th>电话/微信</th>
+                <th>性别</th>
+                <th>城市</th>
+                <th>来源</th>
+                <th>做过项目</th>
+                <th>评级</th>
+                <th>标签</th>
+                <th>备注</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredContacts.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.name}</td>
+                  <td>{item.phone || "—"}</td>
+                  <td>{item.gender}</td>
+                  <td>{item.city}</td>
+                  <td>{item.source}</td>
+                  <td>{item.projects}</td>
+                  <td>
+                    <span
+                      className={`tag ${item.rating === "A" ? "a" : "b"}`}
+                    >
+                      {item.rating}级
+                    </span>
+                  </td>
+                  <td>
+                    {item.tags
+                      .split(",")
+                      .filter(Boolean)
+                      .map((tag) => (
+                        <span className="tag" key={tag}>
+                          {tag}
+                        </span>
+                      ))}
+                  </td>
+                  <td>{item.note || "—"}</td>
+                  <td>
+                    <button
+                      className="btn sm"
+                      onClick={() => open("contact", item.id)}
+                    >
+                      编辑
+                    </button>{" "}
+                    <button
+                      className="btn sm danger"
+                      onClick={() => remove("contacts", item.id)}
+                    >
+                      删除
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  function renderMembers() {
+    return (
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h3>成员管理</h3>
+            <p className="sub">维护良辰、徒弟和客服名单，供承接记录选择</p>
+          </div>
+          <button className="btn primary" onClick={() => open("member")}>
+            ＋新增成员
+          </button>
+        </div>
+        <div className="member-grid">
+          {db.members.map((item) => {
+            const records = conversionStats.filter(
+              (record) => record.member === item.name,
+            );
+            const assigned = records.reduce(
+              (sum, record) => sum + record.assignedWechat,
+              0,
+            );
+            const deals = records.reduce((sum, record) => sum + record.deals, 0);
+            const profit = records.reduce(
+              (sum, record) => sum + record.profit,
+              0,
+            );
+            return (
+              <div className="member-card" key={item.id}>
+                <div>
+                  <div className="member-avatar">{item.name.slice(0, 1)}</div>
+                  <h4>{item.name}</h4>
+                  <span>{item.role}</span>
+                </div>
+                <div className="member-metrics">
+                  <Metric label="累计承接" value={`${assigned}人`} />
+                  <Metric
+                    label="整体转化"
+                    value={percent(assigned ? deals / assigned * 100 : 0)}
+                  />
+                  <Metric label="累计贡献" value={money(profit)} />
+                </div>
+                <p>{item.note || "暂无备注"}</p>
+                <div className="actions">
+                  <button
+                    className="btn sm"
+                    onClick={() => open("member", item.id)}
+                  >
+                    编辑
+                  </button>
+                  <button
+                    className="btn sm danger"
+                    onClick={() => remove("members", item.id)}
+                  >
+                    删除
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    );
+  }
+
+  function renderProjects() {
+    return (
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h3>项目中心</h3>
+            <p className="sub">标准结算、工资口径和实际利润联动</p>
+          </div>
+          <button className="btn primary" onClick={() => open("project")}>
+            ＋新增项目
+          </button>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>项目</th>
+                <th>类型</th>
+                <th>参考结算</th>
+                <th>参考工资</th>
+                <th>订单数</th>
+                <th>实际收入</th>
+                <th>订单利润</th>
+                <th>利润率</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projectStats.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.name}</td>
+                  <td>{item.category}</td>
+                  <td>{money(item.settlement)}</td>
+                  <td>{money(item.wage)}</td>
+                  <td>{item.orders}</td>
+                  <td>{money(item.income)}</td>
+                  <td
+                    className={item.profit >= 0 ? "money-pos" : "money-neg"}
+                  >
+                    {money(item.profit)}
+                  </td>
+                  <td>
+                    {percent(item.income ? item.profit / item.income * 100 : 0)}
+                  </td>
+                  <td>
+                    <span
+                      className={`tag ${
+                        item.status === "进行中" ? "a" : "warn"
+                      }`}
+                    >
+                      {item.status}
+                    </span>
+                  </td>
+                  <td>
+                    <button
+                      className="btn sm"
+                      onClick={() => open("project", item.id)}
+                    >
+                      编辑
+                    </button>{" "}
+                    <button
+                      className="btn sm danger"
+                      onClick={() => remove("projects", item.id)}
+                    >
+                      删除
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  function renderReviews() {
+    return (
+      <section className="panel">
+        <div className="panel-head">
+          <div>
+            <h3>每日经营复盘</h3>
+            <p className="sub">保存数据结果、问题判断和次日动作</p>
+          </div>
+          <button className="btn primary" onClick={() => open("review")}>
+            ＋新增复盘
+          </button>
+        </div>
+        {[...db.reviews]
+          .sort((a, b) => b.date.localeCompare(a.date))
+          .map((item) => (
+            <div className="review-card" key={item.id}>
+              <div className="panel-head">
+                <div>
+                  <h4>{item.date} 经营复盘</h4>
+                  <div className="review-meta">
+                    <span>收入 {money(item.income)}</span>
+                    <span>利润 {money(item.profit)}</span>
+                    <span>投放成本 {money(item.batchCost)}</span>
+                    <span>新增微信 {item.wechat}</span>
+                    <span>成交 {item.deals}</span>
+                  </div>
+                </div>
+                <div>
+                  <button
+                    className="btn sm"
+                    onClick={() => open("review", item.id)}
+                  >
+                    编辑
+                  </button>{" "}
+                  <button
+                    className="btn sm danger"
+                    onClick={() => remove("reviews", item.id)}
+                  >
+                    删除
+                  </button>
+                </div>
+              </div>
+              <div className="review-text">
+                <div>
+                  <b>最佳渠道/项目</b>
+                  {item.best}
+                </div>
+                <div>
+                  <b>主要问题</b>
+                  {item.problem}
+                </div>
+                <div>
+                  <b>明日调整</b>
+                  {item.plan}
+                </div>
+              </div>
+            </div>
+          ))}
+      </section>
+    );
+  }
+
+  function renderData() {
+    return (
+      <div className="grid-2">
+        <section className="panel">
+          <h3>备份与迁移</h3>
+          <p className="sub">
+            数据仍保存在当前浏览器。更新网页不会删除数据，但请定期导出备份。
+          </p>
+          <div className="actions section-gap">
+            <button className="btn primary" onClick={exportData}>
+              导出全部数据
+            </button>
+            <button
+              className="btn"
+              onClick={() => importRef.current?.click()}
+            >
+              导入备份
+            </button>
+            <input
+              ref={importRef}
+              type="file"
+              accept=".json"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) importData(file);
+              }}
+            />
+          </div>
+        </section>
+        <section className="panel">
+          <h3>恢复初始化数据</h3>
+          <p className="sub">
+            会覆盖当前浏览器中的数据，操作前请先导出备份。
+          </p>
+          <button
+            className="btn danger section-gap"
+            onClick={() => {
+              if (confirm("确定覆盖当前数据？")) setDb(seed);
+            }}
+          >
+            恢复历史示例
+          </button>
+        </section>
+      </div>
+    );
+  }
+
+  const currentTitle =
+    navItems.find(([id]) => id === tab)?.[1] || "经营驾驶舱";
+
+  return (
+    <div className="app">
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand-mark">良</div>
+          <div>
+            <h1>良辰运营中台</h1>
+            <small>FLOW OPERATIONS V4.4</small>
+          </div>
+        </div>
+
+        <div className="nav">
+          {navItems.map(([id, label, icon]) => (
+            <button
+              key={id}
+              className={tab === id ? "active" : ""}
+              onClick={() => {
+                setTab(id);
+                setQuery("");
+              }}
+            >
+              <span>{icon}</span>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="side-bottom">
+          <div className="side-card">
+            当前为浏览器本地存储版
+            <br />
+            更新网页不会影响已有数据
+            <br />
+            请定期导出备份
+          </div>
+        </div>
+      </aside>
+
+      <main className="main">
+        <div className="topbar">
+          <div className="title">
+            <h2>{currentTitle}</h2>
+            <p>
+              {new Date().toLocaleDateString("zh-CN", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                weekday: "long",
+              })}
+            </p>
+          </div>
+          <div className="actions">
+            <button className="btn" onClick={exportData}>
+              导出备份
+            </button>
+            <button className="btn primary" onClick={() => open("batch")}>
+              ＋快速记批次
+            </button>
+          </div>
+        </div>
+
+        {tab === "dashboard" && renderDashboard()}
+        {tab === "batches" && renderBatches()}
+        {tab === "conversions" && renderConversions()}
+        {tab === "orders" && renderOrders()}
+        {tab === "expenses" && renderExpenses()}
+        {tab === "crm" && renderCRM()}
+        {tab === "members" && renderMembers()}
+        {tab === "projects" && renderProjects()}
+        {tab === "reviews" && renderReviews()}
+        {tab === "data" && renderData()}
+      </main>
+
+      {modal && (
+        <EditorModal
+          type={modal}
+          id={editId}
+          db={db}
+          setDb={setDb}
+          close={() => {
+            setModal(null);
+            setEditId("");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function Kpi({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div className="kpi">
+      <div className="label">{label}</div>
+      <div className="value">{value}</div>
+      <div className="hint">{hint}</div>
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="metric-row">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function Summary({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="summary-item">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  children,
+  className = "",
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`field ${className}`}>
+      <label>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function EditorModal({
+  type,
+  id,
+  db,
+  setDb,
+  close,
+}: {
+  type: string;
+  id: string;
+  db: DB;
+  setDb: Dispatch<SetStateAction<DB>>;
+  close: () => void;
+}) {
+  const existing = findExisting(type, id, db);
+  const [form, setForm] = useState<Record<string, string | number>>(
+    (existing as unknown as Record<string, string | number>) ||
+      defaultForm(type, db),
+  );
+
+  const set = (key: string, value: string | number) =>
+    setForm((previous) => ({ ...previous, [key]: value }));
+
+  function save() {
+    const item = { ...form, id: existing?.id || uid() };
+    const key = modalKey(type);
+
+    setDb((previous) => {
+      const list = previous[key] as unknown as Array<{ id: string }>;
+      const next = existing
+        ? list.map((entry) => (entry.id === existing.id ? item : entry))
+        : [item, ...list];
+      return { ...previous, [key]: next } as DB;
+    });
+
+    close();
+  }
+
+  const titleMap: Record<string, string> = {
+    batch: "投放批次",
+    conversion: "承接转化记录",
+    order: "订单",
+    expense: "费用",
+    contact: "兼职用户",
+    member: "成员",
+    project: "项目",
+    review: "每日复盘",
+  };
+
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) close();
+      }}
+    >
+      <div className="modal">
+        <div className="modal-head">
+          <h3>
+            {existing ? "编辑" : "新增"}
+            {titleMap[type]}
+          </h3>
+          <button className="close" onClick={close}>
+            ×
+          </button>
+        </div>
+
+        {type === "batch" && (
+          <div className="form-grid">
+            <Field label="日期">
+              <input
+                type="date"
+                value={String(form.date)}
+                onChange={(event) => set("date", event.target.value)}
+              />
+            </Field>
+            <Field label="批次编号">
+              <input
+                value={String(form.batchNo)}
+                onChange={(event) => set("batchNo", event.target.value)}
+                placeholder="例如 0724-A"
+              />
+            </Field>
+            <Field label="流量方式">
+              <select
+                value={String(form.channel)}
+                onChange={(event) => set("channel", event.target.value)}
+              >
+                <option>小红书双号代发</option>
+                <option>小红书截流</option>
+                <option>抖音作品</option>
+                <option>抖音截流</option>
+                <option>自然复购</option>
+                <option>其他</option>
+              </select>
+            </Field>
+            <Field label="承接微信">
+              <input
+                value={String(form.receiverWechat)}
+                onChange={(event) => set("receiverWechat", event.target.value)}
+                placeholder="良辰微信1号"
+              />
+            </Field>
+            <Field label="小红书账号1">
+              <input
+                value={String(form.account1)}
+                onChange={(event) => set("account1", event.target.value)}
+              />
+            </Field>
+            <Field label="小红书账号2">
+              <input
+                value={String(form.account2)}
+                onChange={(event) => set("account2", event.target.value)}
+              />
+            </Field>
+            <Field label="发布账号数">
+              <input
+                type="number"
+                value={Number(form.accountCount)}
+                onChange={(event) => set("accountCount", +event.target.value)}
+              />
+            </Field>
+            <Field label="总帖子数">
+              <input
+                type="number"
+                value={Number(form.posts)}
+                onChange={(event) => set("posts", +event.target.value)}
+              />
+            </Field>
+            <Field label="总投放成本">
+              <input
+                type="number"
+                value={Number(form.cost)}
+                onChange={(event) => set("cost", +event.target.value)}
+              />
+            </Field>
+            <Field label="新增微信">
+              <input
+                type="number"
+                value={Number(form.wechat)}
+                onChange={(event) => set("wechat", +event.target.value)}
+              />
+            </Field>
+            <Field label="有效咨询">
+              <input
+                type="number"
+                value={Number(form.consultations)}
+                onChange={(event) => set("consultations", +event.target.value)}
+              />
+            </Field>
+            <Field label="成交人数">
+              <input
+                type="number"
+                value={Number(form.deals)}
+                onChange={(event) => set("deals", +event.target.value)}
+              />
+            </Field>
+            <Field label="归因利润">
+              <input
+                type="number"
+                value={Number(form.attributedProfit)}
+                onChange={(event) =>
+                  set("attributedProfit", +event.target.value)
+                }
+              />
+            </Field>
+            <Field label="负责人">
+              <input
+                list="member-list"
+                value={String(form.owner)}
+                onChange={(event) => set("owner", event.target.value)}
+              />
+            </Field>
+            <Field label="自动单微信成本">
+              <div className="calculated-value">
+                {money(
+                  Number(form.wechat)
+                    ? Number(form.cost) / Number(form.wechat)
+                    : 0,
+                )}
+              </div>
+            </Field>
+            <Field label="自动整体转化率">
+              <div className="calculated-value">
+                {percent(
+                  Number(form.wechat)
+                    ? Number(form.deals) / Number(form.wechat) * 100
+                    : 0,
+                )}
+              </div>
+            </Field>
+            <Field label="备注" className="span-4">
+              <textarea
+                value={String(form.note)}
+                onChange={(event) => set("note", event.target.value)}
+              />
+            </Field>
+          </div>
+        )}
+
+        {type === "conversion" && (
+          <div className="form-grid">
+            <Field label="日期">
+              <input
+                type="date"
+                value={String(form.date)}
+                onChange={(event) => set("date", event.target.value)}
+              />
+            </Field>
+            <Field label="负责人">
+              <input
+                list="member-list"
+                value={String(form.member)}
+                onChange={(event) => set("member", event.target.value)}
+              />
+            </Field>
+            <Field label="承接微信">
+              <input
+                value={String(form.receiverWechat)}
+                onChange={(event) => set("receiverWechat", event.target.value)}
+              />
+            </Field>
+            <Field label="分配/新增微信">
+              <input
+                type="number"
+                value={Number(form.assignedWechat)}
+                onChange={(event) => set("assignedWechat", +event.target.value)}
+              />
+            </Field>
+            <Field label="有效咨询">
+              <input
+                type="number"
+                value={Number(form.consultations)}
+                onChange={(event) => set("consultations", +event.target.value)}
+              />
+            </Field>
+            <Field label="成交人数">
+              <input
+                type="number"
+                value={Number(form.deals)}
+                onChange={(event) => set("deals", +event.target.value)}
+              />
+            </Field>
+            <Field label="归因收入">
+              <input
+                type="number"
+                value={Number(form.revenue)}
+                onChange={(event) => set("revenue", +event.target.value)}
+              />
+            </Field>
+            <Field label="工资/提成/其他成本">
+              <input
+                type="number"
+                value={Number(form.cost)}
+                onChange={(event) => set("cost", +event.target.value)}
+              />
+            </Field>
+            <Field label="咨询率">
+              <div className="calculated-value">
+                {percent(
+                  Number(form.assignedWechat)
+                    ? Number(form.consultations) /
+                        Number(form.assignedWechat) *
+                        100
+                    : 0,
+                )}
+              </div>
+            </Field>
+            <Field label="整体转化率">
+              <div className="calculated-value">
+                {percent(
+                  Number(form.assignedWechat)
+                    ? Number(form.deals) / Number(form.assignedWechat) * 100
+                    : 0,
+                )}
+              </div>
+            </Field>
+            <Field label="贡献利润">
+              <div className="calculated-value money-pos">
+                {money(Number(form.revenue) - Number(form.cost))}
+              </div>
+            </Field>
+            <Field label="单微信利润">
+              <div className="calculated-value">
+                {money(
+                  Number(form.assignedWechat)
+                    ? (Number(form.revenue) - Number(form.cost)) /
+                        Number(form.assignedWechat)
+                    : 0,
+                )}
+              </div>
+            </Field>
+            <Field label="备注" className="span-4">
+              <textarea
+                value={String(form.note)}
+                onChange={(event) => set("note", event.target.value)}
+              />
+            </Field>
+          </div>
+        )}
+
+        {type === "order" && (
+          <div className="form-grid">
+            <Field label="日期">
+              <input
+                type="date"
+                value={String(form.date)}
+                onChange={(event) => set("date", event.target.value)}
+              />
+            </Field>
+            <Field label="项目">
+              <input
+                list="project-list"
+                value={String(form.project)}
+                onChange={(event) => set("project", event.target.value)}
+              />
+            </Field>
+            <Field label="兼职姓名">
+              <input
+                value={String(form.name)}
+                onChange={(event) => set("name", event.target.value)}
+              />
+            </Field>
+            <Field label="电话/微信">
+              <input
+                value={String(form.phone)}
+                onChange={(event) => set("phone", event.target.value)}
+              />
+            </Field>
+            <Field label="来源渠道">
+              <input
+                value={String(form.source)}
+                onChange={(event) => set("source", event.target.value)}
+              />
+            </Field>
+            <Field label="企业结算">
+              <input
+                type="number"
+                value={Number(form.income)}
+                onChange={(event) => set("income", +event.target.value)}
+              />
+            </Field>
+            <Field label="兼职工资">
+              <input
+                type="number"
+                value={Number(form.salary)}
+                onChange={(event) => set("salary", +event.target.value)}
+              />
+            </Field>
+            <Field label="其他直接成本">
+              <input
+                type="number"
+                value={Number(form.otherCost)}
+                onChange={(event) => set("otherCost", +event.target.value)}
+              />
+            </Field>
+            <Field label="负责人">
+              <input
+                list="member-list"
+                value={String(form.owner)}
+                onChange={(event) => set("owner", event.target.value)}
+              />
+            </Field>
+            <Field label="状态">
+              <select
+                value={String(form.status)}
+                onChange={(event) => set("status", event.target.value)}
+              >
+                <option>已完成</option>
+                <option>待结算</option>
+                <option>已取消</option>
+              </select>
+            </Field>
+            <Field label="自动订单利润">
+              <div className="calculated-value money-pos">
+                {money(
+                  Number(form.income) -
+                    Number(form.salary) -
+                    Number(form.otherCost),
+                )}
+              </div>
+            </Field>
+            <Field label="备注" className="span-4">
+              <textarea
+                value={String(form.note)}
+                onChange={(event) => set("note", event.target.value)}
+              />
+            </Field>
+          </div>
+        )}
+
+        {type === "expense" && (
+          <div className="form-grid">
+            <Field label="日期">
+              <input
+                type="date"
+                value={String(form.date)}
+                onChange={(event) => set("date", event.target.value)}
+              />
+            </Field>
+            <Field label="费用类型">
+              <input
+                value={String(form.category)}
+                onChange={(event) => set("category", event.target.value)}
+              />
+            </Field>
+            <Field label="金额">
+              <input
+                type="number"
+                value={Number(form.amount)}
+                onChange={(event) => set("amount", +event.target.value)}
+              />
+            </Field>
+            <Field label="收款人">
+              <input
+                value={String(form.payee)}
+                onChange={(event) => set("payee", event.target.value)}
+              />
+            </Field>
+            <Field label="负责人">
+              <input
+                list="member-list"
+                value={String(form.owner)}
+                onChange={(event) => set("owner", event.target.value)}
+              />
+            </Field>
+            <Field label="备注" className="span-4">
+              <textarea
+                value={String(form.note)}
+                onChange={(event) => set("note", event.target.value)}
+              />
+            </Field>
+          </div>
+        )}
+
+        {type === "contact" && (
+          <div className="form-grid">
+            <Field label="姓名">
+              <input
+                value={String(form.name)}
+                onChange={(event) => set("name", event.target.value)}
+              />
+            </Field>
+            <Field label="电话/微信">
+              <input
+                value={String(form.phone)}
+                onChange={(event) => set("phone", event.target.value)}
+              />
+            </Field>
+            <Field label="性别">
+              <select
+                value={String(form.gender)}
+                onChange={(event) => set("gender", event.target.value)}
+              >
+                <option>男</option>
+                <option>女</option>
+                <option>未知</option>
+              </select>
+            </Field>
+            <Field label="城市/学校">
+              <input
+                value={String(form.city)}
+                onChange={(event) => set("city", event.target.value)}
+              />
+            </Field>
+            <Field label="来源">
+              <input
+                value={String(form.source)}
+                onChange={(event) => set("source", event.target.value)}
+              />
+            </Field>
+            <Field label="评级">
+              <select
+                value={String(form.rating)}
+                onChange={(event) => set("rating", event.target.value)}
+              >
+                <option>A</option>
+                <option>B</option>
+                <option>C</option>
+              </select>
+            </Field>
+            <Field label="做过项目" className="span-2">
+              <input
+                value={String(form.projects)}
+                onChange={(event) => set("projects", event.target.value)}
+              />
+            </Field>
+            <Field label="标签（逗号分隔）" className="span-2">
+              <input
+                value={String(form.tags)}
+                onChange={(event) => set("tags", event.target.value)}
+              />
+            </Field>
+            <Field label="备注" className="span-4">
+              <textarea
+                value={String(form.note)}
+                onChange={(event) => set("note", event.target.value)}
+              />
+            </Field>
+          </div>
+        )}
+
+        {type === "member" && (
+          <div className="form-grid">
+            <Field label="成员姓名">
+              <input
+                value={String(form.name)}
+                onChange={(event) => set("name", event.target.value)}
+              />
+            </Field>
+            <Field label="角色">
+              <input
+                value={String(form.role)}
+                onChange={(event) => set("role", event.target.value)}
+              />
+            </Field>
+            <Field label="备注" className="span-4">
+              <textarea
+                value={String(form.note)}
+                onChange={(event) => set("note", event.target.value)}
+              />
+            </Field>
+          </div>
+        )}
+
+        {type === "project" && (
+          <div className="form-grid">
+            <Field label="项目名称">
+              <input
+                value={String(form.name)}
+                onChange={(event) => set("name", event.target.value)}
+              />
+            </Field>
+            <Field label="项目类型">
+              <input
+                value={String(form.category)}
+                onChange={(event) => set("category", event.target.value)}
+              />
+            </Field>
+            <Field label="参考结算">
+              <input
+                type="number"
+                value={Number(form.settlement)}
+                onChange={(event) => set("settlement", +event.target.value)}
+              />
+            </Field>
+            <Field label="参考工资">
+              <input
+                type="number"
+                value={Number(form.wage)}
+                onChange={(event) => set("wage", +event.target.value)}
+              />
+            </Field>
+            <Field label="状态">
+              <select
+                value={String(form.status)}
+                onChange={(event) => set("status", event.target.value)}
+              >
+                <option>进行中</option>
+                <option>暂停</option>
+                <option>结束</option>
+              </select>
+            </Field>
+            <Field label="备注" className="span-4">
+              <textarea
+                value={String(form.note)}
+                onChange={(event) => set("note", event.target.value)}
+              />
+            </Field>
+          </div>
+        )}
+
+        {type === "review" && (
+          <div className="form-grid">
+            <Field label="日期">
+              <input
+                type="date"
+                value={String(form.date)}
+                onChange={(event) => set("date", event.target.value)}
+              />
+            </Field>
+            <Field label="今日收入">
+              <input
+                type="number"
+                value={Number(form.income)}
+                onChange={(event) => set("income", +event.target.value)}
+              />
+            </Field>
+            <Field label="今日利润">
+              <input
+                type="number"
+                value={Number(form.profit)}
+                onChange={(event) => set("profit", +event.target.value)}
+              />
+            </Field>
+            <Field label="投放成本">
+              <input
+                type="number"
+                value={Number(form.batchCost)}
+                onChange={(event) => set("batchCost", +event.target.value)}
+              />
+            </Field>
+            <Field label="新增微信">
+              <input
+                type="number"
+                value={Number(form.wechat)}
+                onChange={(event) => set("wechat", +event.target.value)}
+              />
+            </Field>
+            <Field label="成交人数">
+              <input
+                type="number"
+                value={Number(form.deals)}
+                onChange={(event) => set("deals", +event.target.value)}
+              />
+            </Field>
+            <Field label="今日最佳渠道/项目" className="span-4">
+              <textarea
+                value={String(form.best)}
+                onChange={(event) => set("best", event.target.value)}
+              />
+            </Field>
+            <Field label="今日问题" className="span-4">
+              <textarea
+                value={String(form.problem)}
+                onChange={(event) => set("problem", event.target.value)}
+              />
+            </Field>
+            <Field label="明日调整" className="span-4">
+              <textarea
+                value={String(form.plan)}
+                onChange={(event) => set("plan", event.target.value)}
+              />
+            </Field>
+          </div>
+        )}
+
+        <datalist id="member-list">
+          {db.members.map((item) => (
+            <option value={item.name} key={item.id} />
+          ))}
+        </datalist>
+        <datalist id="project-list">
+          {db.projects.map((item) => (
+            <option value={item.name} key={item.id} />
+          ))}
+        </datalist>
+
+        <div className="actions modal-actions">
+          <button className="btn" onClick={close}>
+            取消
+          </button>
+          <button className="btn primary" onClick={save}>
+            保存
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function modalKey(type: string): keyof DB {
+  const map: Record<string, keyof DB> = {
+    batch: "batches",
+    conversion: "conversions",
+    order: "orders",
+    expense: "expenses",
+    contact: "contacts",
+    member: "members",
+    project: "projects",
+    review: "reviews",
+  };
+  return map[type];
+}
+
+function findExisting(type: string, id: string, db: DB) {
+  if (!id) return undefined;
+  const key = modalKey(type);
+  return (db[key] as unknown as Array<{ id: string }>).find(
+    (item) => item.id === id,
+  );
+}
+
+function defaultForm(type: string, db: DB): Record<string, string | number> {
+  if (type === "batch") {
+    return {
+      date: today(),
+      batchNo: `${today().slice(5).replace("-", "")}-A`,
+      channel: "小红书双号代发",
+      receiverWechat: "",
+      account1: "",
+      account2: "",
+      accountCount: 2,
+      posts: 2,
+      cost: 0,
+      wechat: 0,
+      consultations: 0,
+      deals: 0,
+      attributedProfit: 0,
+      owner: "良辰",
+      note: "",
+    };
+  }
+
+  if (type === "conversion") {
+    return {
+      date: today(),
+      member: db.members[0]?.name || "良辰",
+      receiverWechat: "",
+      assignedWechat: 0,
+      consultations: 0,
+      deals: 0,
+      revenue: 0,
+      cost: 0,
+      note: "",
+    };
+  }
+
+  if (type === "order") {
+    return {
+      date: today(),
+      project: db.projects[0]?.name || "",
+      name: "",
+      phone: "",
+      source: "",
+      income: 0,
+      salary: 0,
+      otherCost: 0,
+      owner: "良辰",
+      status: "已完成",
+      note: "",
+    };
+  }
+
+  if (type === "expense") {
+    return {
+      date: today(),
+      category: "员工工资",
+      amount: 0,
+      payee: "",
+      owner: "良辰",
+      note: "",
+    };
+  }
+
+  if (type === "contact") {
+    return {
+      name: "",
+      phone: "",
+      gender: "未知",
+      city: "长沙",
+      source: "",
+      projects: "",
+      rating: "B",
+      tags: "",
+      note: "",
+    };
+  }
+
+  if (type === "member") {
+    return {
+      name: "",
+      role: "转化成员",
+      note: "",
+    };
+  }
+
+  if (type === "project") {
+    return {
+      name: "",
+      category: "",
+      settlement: 0,
+      wage: 0,
+      status: "进行中",
+      note: "",
+    };
+  }
+
+  const day = today();
+  const dayOrders = db.orders.filter(
+    (item) => item.date === day && item.status !== "已取消",
+  );
+  const dayBatches = db.batches.filter((item) => item.date === day);
+  const dayExpenses = db.expenses.filter((item) => item.date === day);
+
+  return {
+    date: day,
+    income: dayOrders.reduce((sum, item) => sum + item.income, 0),
+    profit:
+      dayOrders.reduce(
+        (sum, item) => sum + item.income - item.salary - item.otherCost,
+        0,
+      ) -
+      dayBatches.reduce((sum, item) => sum + item.cost, 0) -
+      dayExpenses.reduce((sum, item) => sum + item.amount, 0),
+    batchCost: dayBatches.reduce((sum, item) => sum + item.cost, 0),
+    wechat: dayBatches.reduce((sum, item) => sum + item.wechat, 0),
+    deals: dayBatches.reduce((sum, item) => sum + item.deals, 0),
+    best: "",
+    problem: "",
+    plan: "",
+  };
+}
